@@ -376,7 +376,7 @@ WorkBuddy 定时任务 id `f3a34004-bac1-43d5-9212-ef7b0312c5ca`，
 名称 **Index Valuation Daily**，周一至周五 06:00，工作目录 `D:/QClaw/Stock/index_valuation`。
 
 > **本节是定时任务提示词的操作细则。** 提示词按"做什么"列五步（判重 → 出报告 → 写观点
-> → 自检交付 → 失败停手），判据、命令原文、失败处理以本节为准；
+> → 自检交付 → 推送 GitHub → 失败停手），判据、命令原文、失败处理以本节为准；
 > 改流程时先改本节，提示词只跟着改步骤本身。
 >
 > `$PY` = `C:/Users/zky12/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
@@ -389,6 +389,7 @@ WorkBuddy 定时任务 id `f3a34004-bac1-43d5-9212-ef7b0312c5ca`，
 | 2 | 生成报告 | 跑 v2 管线；产出**正式文件名**（不带 `--tag` 标记） | `cd D:/QClaw/Stock/index_valuation && $PY run_daily.py` | 见 7.4 |
 | 3 | 补写机构观点 | **按机构写，一行一家**：`views` 为列表，每项 `{"org": 机构, "date": 发布日（YYYY-MM，查得到精确日则 YYYY-MM-DD）, "scope": 覆盖标的, "view": 观点}`；只收**外资投行**（高盛/摩根士丹利/摩根大通/瑞银/野村/花旗/美银/德银等）对沪深300 / 创业板指 / A股整体的观点。观点文本里**不要写指标数字**——报告右列"对照读数"由脚本按当日数据自动生成。`syn` 仍按指数写一句话结论（只沪深300、创业板指）。**时效与核实（2026-10-21 起）**：只收**当月或上个月**发布（按月份判断，以数据日为基准）的观点，且必须核实发布日期（找原始报道/研报，标注到日）；查不到发布时间、或设定后长期未更新的存量目标，一律不收，宁可少收不编造 | `cd scripts && ASOF=<第2步数据日期> $PY gen2.py` | 查不到可靠观点就跳过，不编造 |
 | 4 | 自检交付 | 见 7.5，然后展示报告 + 四句话总结 | — | — |
+| 5 | 推送 GitHub | 见 7.7。**只在第 2 步报告成功产出后执行**；单次尝试，失败不重试 | 命令见 7.7 | 失败只记一句到总结，下次运行自然补推 |
 
 ### 7.2 第 1 步：判重看"是否收盘后生成"，不是看"文件在不在"
 
@@ -458,6 +459,30 @@ WorkBuddy 定时任务 id `f3a34004-bac1-43d5-9212-ef7b0312c5ca`，
    它用 DOM/echarts 桩把报告脚本真实跑一遍——`node --check` 只能查语法，
    **查不出「gen2 删了 DATA 字段、模板还在读」这类错误**（v2.6.2 实测教训：
    `fund.series` 被删后资金面表崩掉、全部图表不渲染）。退出码 0 才算过。
+
+### 7.7 第 5 步：推送 GitHub（v2.6.3 起）
+
+仓库：`https://github.com/ZetaUrsae/cn-index-valuation`（私有），分支 `main`。
+仓库级身份已配置（`user.name=ZetaUrsae`、`user.email=21005787+ZetaUrsae@users.noreply.github.com`），
+凭据由 Git Credential Manager 缓存，正常 push 无需交互。
+
+```bash
+git -C D:/QClaw/Stock/index_valuation add -A
+git -C D:/QClaw/Stock/index_valuation status --porcelain   # 输出为空 → 无变更，直接结束
+git -C D:/QClaw/Stock/index_valuation commit -m "Daily report <asof>"
+git -C D:/QClaw/Stock/index_valuation push
+```
+
+规则：
+- **前置条件**：第 2 步报告成功产出。管线失败（停手场景）时**不推送**，避免把失败状态
+  提交进历史。
+- **单次尝试**（用户 2026-10-26 定）：GitHub 访问不稳定，push 失败**不重试**、
+  不影响报告交付；commit 已落在本地，下次运行会随新提交一起推上去，天然补推。
+- `git add -A` 会把新报告、data 增量、docs 改动一并纳入；`work/`、`data/cache/`、
+  `.workbuddy/` 由 `.gitignore` 排除，不会误入。
+- 一律用 `git -C <项目路径>` 形式，**不要依赖 shell 当前目录**（工作目录可能被重置，
+  2026-10-26 实测教训）。
+- push 失败时在总结里写一句「GitHub 推送失败（将在下次运行补推）」即可，不算失败环节。
 
 ### 7.6 这些默认值由代码保证，这里只备查
 
