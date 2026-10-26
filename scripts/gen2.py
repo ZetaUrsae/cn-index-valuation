@@ -240,27 +240,57 @@ def _contract_code(prod, d_iso):
 _fut_days = sorted({d for prod, _nm in FUTPROD
                     for d in FUTBLOB.get(prod, {}) if d <= _ASOF_ISO})
 _fut_days = _tail2(_fut_days)                     # 每 2 日抽 1 点、锚定最新
-futAll = {"dates": [int(d.replace("-", "")[2:]) for d in _fut_days], "series": {}}
-futCur = {}
+futAll = {"dates": [int(x.replace("-", "")[2:]) for x in _fut_days], "series": {}}
+futTab = {}
+_CUR_LBL = ["当月", "次月", "当季", "下季"]
 for _prod, _nm in FUTPROD:
     _fmp = FUTBLOB.get(_prod, {})
     _smp = (FUTBLOB.get("SPOT852", {}) if _prod == "IM"
             else CLOSE_HIST.get(CODE[_nm], {}))
     futAll["series"][_nm] = [
-        round((_fmp[d] / _smp[d] - 1) * 100, 3)
-        if _fmp.get(d) and _smp.get(d) else None
-        for d in _fut_days]
-    _ok = [d for d in sorted(_fmp)
-           if d <= _ASOF_ISO and _fmp.get(d) and _smp.get(d)]
-    if _ok:
-        d = _ok[-1]
-        f, s = _fmp[d], _smp[d]
-        code = _contract_code(_prod, d)
-        exp = _third_friday(2000 + int(code[2:4]), int(code[4:6]))
-        futCur[_nm] = {"code": code, "fut": f, "spot": s,
-                       "basis": round(f - s, 1),
-                       "rate": round((f / s - 1) * 100, 3),
-                       "ddays": (exp - _dt.date.fromisoformat(d)).days}
+        round((_fmp[x] / _smp[x] - 1) * 100, 3)
+        if _fmp.get(x) and _smp.get(x) else None
+        for x in _fut_days]
+    # 读数表：以「期货与现货都有收盘」的最近日为读数日，列全部存续合约
+    # 注意：本块所有局部变量一律 _f 前缀——此处的 rows/d/f 曾覆盖主报告同名变量
+    # （v2.6.5 实测 KeyError: 'pe_pct'，与 v2.6.2 的 fund.series 教训同类）
+    _fok = [x for x in sorted(_fmp)
+            if x <= _ASOF_ISO and _fmp.get(x) and _smp.get(x)]
+    if not _fok:
+        continue
+    _fd = _fok[-1]
+    _fspot = _smp[_fd]
+    _frows = []
+    _fcur = FUTBLOB.get("CUR", {}).get(_prod, {})
+    for _fi, (_fsym, _fser) in enumerate(sorted(_fcur.items())):
+        if _fi >= len(_CUR_LBL):
+            break
+        _fv = _fser.get(_fd)
+        if _fv is None:                           # 该日无此合约（极少），取 ≤日 最近值
+            _fks = [k for k in sorted(_fser) if k <= _fd]
+            if not _fks:
+                continue
+            _fv = _fser[_fks[-1]]
+        _fyy, _fmm = int(_fsym[2:4]), int(_fsym[4:6])
+        _fexp = _third_friday(2000 + _fyy, _fmm)
+        _fdd = (_fexp - _dt.date.fromisoformat(_fd)).days
+        _frate = round((_fv / _fspot - 1) * 100, 3)
+        _frows.append({"label": _CUR_LBL[_fi], "code": _fsym, "fut": _fv,
+                       "basis": round(_fv - _fspot, 1), "rate": _frate,
+                       "ann": round(_frate * 365 / _fdd, 2) if _fdd > 0 else None,
+                       "ddays": _fdd})
+    if not _frows:
+        # 降级：CUR 尚未回填（首次接入/取数失败），用当月连续出一行当月读数
+        _fv = _fmp[_fd]
+        _fcode = _contract_code(_prod, _fd)
+        _fexp = _third_friday(2000 + int(_fcode[2:4]), int(_fcode[4:6]))
+        _fdd = (_fexp - _dt.date.fromisoformat(_fd)).days
+        _frate = round((_fv / _fspot - 1) * 100, 3)
+        _frows.append({"label": "当月", "code": _fcode, "fut": _fv,
+                       "basis": round(_fv - _fspot, 1), "rate": _frate,
+                       "ann": round(_frate * 365 / _fdd, 2) if _fdd > 0 else None,
+                       "ddays": _fdd})
+    futTab[_nm] = {"date": _fd, "spot": _fspot, "rows": _frows}
 
 
 # ---------- 动态生成「总结」（随数据变化，避免硬编码过期） ----------
@@ -400,7 +430,7 @@ DATA = {
     "bond10y": BOND10Y, "bondDate": BONDDATE, "rows": rows,
     "band": band_data(),
     "pcrAll": pcrAll, "shareAll": shareAll,
-    "futAll": futAll, "futCur": futCur,
+    "futAll": futAll, "futTab": futTab,
     "pcrStart": cfg.fmt(_pmin), "sciPcrStart": cfg.fmt(_smin),
     "views": _views(), "syn": MAN.get("syn", {}),
     "summary": summary_html,

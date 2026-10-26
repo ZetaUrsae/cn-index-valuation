@@ -65,6 +65,24 @@ def contract_ym(d):
     return ym
 
 
+def listed_contracts(d):
+    """当前全部存续合约月份（YYYYMM 列表，当月/次月/当季/下季）。
+
+    中金所挂牌规则：当月、次月及随后两个季月（3/6/9/12）。
+    d 晚于当月第三个周五时，当月已经交割、顺延到次月。
+    """
+    y, m = (d.year, d.month)
+    if d > third_friday(y, m):
+        y, m = (y + (m == 12), 1 if m == 12 else m + 1)
+    out = [(y, m), (y + (m == 12), 1 if m == 12 else m + 1)]
+    while len(out) < 4:                       # 补足两个季月
+        y2, m2 = out[-1]
+        y2, m2 = (y2 + (m2 == 12), 1 if m2 == 12 else m2 + 1)
+        if m2 % 3 == 0:
+            out.append((y2, m2))
+    return ["%04d%02d" % t for t in out[:4]]
+
+
 def ym_range(a, b):
     """闭区间 [a, b] 的 YYYYMM 序列。"""
     out, cur = [], a
@@ -124,6 +142,7 @@ def sync_futures(blob, seed=False):
     today = datetime.date.today()
     # 次月合约也要拉：交割日次一交易日起当月=次月（否则序列停在交割日）
     cur_ym = next_ym("%04d%02d" % (today.year, today.month))
+    listed = listed_contracts(today)          # 当月/次月/当季/下季（CUR 表用）
     for prod in PROD:
         existing = blob.get(prod, {})
         if seed or not existing:
@@ -133,7 +152,9 @@ def sync_futures(blob, seed=False):
             anchor = (datetime.date.fromisoformat(max(existing))
                       - datetime.timedelta(days=40))
             months = ym_range("%04d%02d" % (anchor.year, anchor.month), cur_ym)
+        months = sorted(set(months) | set(listed))       # 存续季月也取，CUR 表用
         added = 0
+        bars_cache = {}
         for ym in months:
             sym = prod + ym[2:]
             try:
@@ -142,15 +163,30 @@ def sync_futures(blob, seed=False):
                 print("  !! [futures] %s 取数失败：%s %s"
                       % (sym, type(e).__name__, str(e)[:100]))
                 bars = []
+            bars_cache[sym] = bars
             # 只收属于「当月」的交易日（拼接规则：t 的当月合约 = contract_ym(t)）
             pairs = [(d, c) for d, c in bars
                      if contract_ym(datetime.date.fromisoformat(d)) == ym]
             added += _merge(blob, prod, pairs)
             time.sleep(SLEEP)
+        # CUR：全部存续合约的日收盘（读数表用；与当月连续日期对齐取值）
+        cur = blob.setdefault("CUR", {}).setdefault(prod, {})
+        for sym in [prod + ym[2:] for ym in listed]:
+            pairs = bars_cache.get(sym)
+            if pairs is None:                             # 季月不在上面循环里时补拉
+                try:
+                    pairs = _fetch_contract(sym)
+                except Exception as e:                    # noqa: BLE001
+                    print("  !! [futures] %s 取数失败：%s %s"
+                          % (sym, type(e).__name__, str(e)[:100]))
+                    pairs = []
+                time.sleep(SLEEP)
+            _merge(blob, "CUR." + prod, [(d, c) for d, c in pairs])
+        blob["CUR"][prod] = blob.pop("CUR." + prod)
         ks = sorted(blob[prod])
-        print("  [futures] %s → %s ~ %s（%d 日，本次新补 %d）"
+        print("  [futures] %s → %s ~ %s（%d 日，本次新补 %d；存续 %s）"
               % (prod, ks[0] if ks else "-", ks[-1] if ks else "-",
-                 len(ks), added))
+                 len(ks), added, ",".join([prod + ym[2:] for ym in listed])))
     # _meta：各品种最后一个交易日的当月合约代码（gen2 直接引用）
     meta = blob.setdefault("_meta", {})
     meta["updated"] = datetime.datetime.now().isoformat(timespec="seconds")

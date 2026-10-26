@@ -200,18 +200,6 @@
     <div class="note erp-note" id="erp-note"></div>
   </div>
 
-  <!-- 机构展望 -->
-  <div class="sub-title"><span class="badge">机构展望</span>外资投行观点（按机构）<span class="hint">非一手来源，需核实原文</span></div>
-  <div class="card"><div class="tblwrap">
-    <table>
-      <thead><tr>
-        <th class="l">机构</th><th>发布日</th><th class="l">覆盖标的</th><th class="l">核心观点</th><th class="l">对照读数<span style="font-weight:400;font-size:10px;">（脚本自动）</span></th>
-      </tr></thead>
-      <tbody id="tb-view"></tbody>
-    </table>
-  </div></div>
-  <div class="note">· 按<b>机构</b>组织，一家一行；只收录<b>外资投行</b>（高盛、摩根士丹利、摩根大通、瑞银、野村、花旗、美银、德银等）对 <b>沪深300 / 创业板指 / A股整体</b> 的公开观点，每条注明机构与发布日。· 最右列「对照读数」由脚本按当日数据自动生成（估值分位、份额 60 日变化），便于把观点与指标对照着看。· 整理自公开研究与媒体报道（最近更新：<span id="viewasof">—</span>），属<b>非一手来源、需核实原文</b>，口径与时效以各机构报告为准。· 主要风险提示（外资投行普遍提及）：海外利率与美元流动性、三季报盈利验证、地缘冲突与油价扰动、交易结构拥挤度。</div>
-
   <!-- 二、资金面 -->
   <div class="sec-title">二、资金面：ETF 基金份额变化 <span class="en">Fund Flows</span><span class="hint">份额增加＝净申购（资金流入）</span></div>
   <div class="card" style="padding:16px 18px 8px;">
@@ -254,10 +242,17 @@
     <div class="band-ctl"><div class="seg" id="fut-idx"></div><div class="seg" id="fut-win"></div></div>
     <div id="cFUT" class="chart"></div>
     <div class="c-sub" style="margin:6px 0 0;">0 轴＝升贴水平衡；线下为<b>贴水</b>（期货折价，常反映对冲需求旺盛、情绪偏谨慎），线上为<b>升水</b>（情绪偏乐观）</div>
-    <div class="c-title" style="font-size:13px;margin-top:14px;">当前读数（<span id="fut-asof">—</span>）</div>
-    <div id="fut-strip" class="erp-strip" style="margin-top:9px;"></div>
+    <div class="c-title" style="font-size:13px;margin-top:14px;">全存续合约贴水（<span id="fut-asof">—</span>）</div>
+    <div class="tblwrap" style="margin-top:9px;"><table>
+      <thead><tr>
+        <th class="l">品种</th><th>合约</th><th>期货收盘</th><th>基差<br><span style="font-weight:400;font-size:10px;">(点)</span></th>
+        <th>基差率</th><th>年化基差率</th><th>距交割</th>
+      </tr></thead>
+      <tbody id="tb-fut"></tbody>
+    </table></div>
+    <div class="note" id="fut-cmt" style="margin-top:8px;"></div>
   </div>
-  <div class="note">· 当月连续由各月份合约日收盘拼接（<b>交割日次一交易日起切换次月合约</b>）；期货收盘来自新浪财经合约日 K 线，现货收盘与估值表同源（中证1000 为东财 K 线）。· IF/IH/IC 期货历史自 2018-10 起（新浪可查下界），IM 自 2022-07 上市起。· <b>贴水有季节性</b>：5–7 月分红集中期，指数除息令现货自然走低、贴水天然偏深，宜与历史同期比较。· 深贴水长期存在也包含雪球等场外对冲盘的卖出压力，与单纯情绪悲观需区分。</div>
+  <div class="note">· 当月连续由各月份合约日收盘拼接（<b>交割日次一交易日起切换次月合约</b>）；期货收盘来自新浪财经合约日 K 线，现货收盘与估值表同源（中证1000 为东财 K 线）。· <b>年化基差率</b> ＝ 基差率 × 365 / 距交割自然日，用于跨期限比较贴水深度；近月合约临近交割时基差收敛，年化值波动大。· IF/IH/IC 期货历史自 2019-03 起（新浪可查下界），IM 自 2022-07 上市起。· <b>贴水有季节性</b>：5–7 月分红集中期，指数除息令现货自然走低、贴水天然偏深，宜与历史同期比较。· 深贴水长期存在也包含雪球等场外对冲盘的卖出压力，与单纯情绪悲观需区分。</div>
 
   <!-- 四、技术面 -->
   <div class="sec-title">四、技术面：K线形态与均线位置 <span class="en">Technicals</span><span class="hint">近 60 个交易日</span></div>
@@ -282,6 +277,18 @@
     </table>
   </div></div>
   <div class="legend" id="lg-dim"></div>
+
+  <!-- 机构展望（第五章节内，信号矩阵之后） -->
+  <div class="sub-title" style="margin-top:18px;"><span class="badge">机构展望</span>外资投行观点（按机构）<span class="hint">非一手来源，需核实原文</span></div>
+  <div class="card"><div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th class="l">机构</th><th>发布日</th><th class="l">覆盖标的</th><th class="l">核心观点</th><th class="l">对照读数<span style="font-weight:400;font-size:10px;">（脚本自动）</span></th>
+      </tr></thead>
+      <tbody id="tb-view"></tbody>
+    </table>
+  </div></div>
+  <div class="note">· 按<b>机构</b>组织，一家一行；只收录<b>外资投行</b>（高盛、摩根士丹利、摩根大通、瑞银、野村、花旗、美银、德银等）对 <b>沪深300 / 创业板指 / A股整体</b> 的公开观点，每条注明机构与发布日。· 最右列「对照读数」由脚本按当日数据自动生成（估值分位、份额 60 日变化），便于把观点与指标对照着看。· 整理自公开研究与媒体报道（最近更新：<span id="viewasof">—</span>），属<b>非一手来源、需核实原文</b>，口径与时效以各机构报告为准。· 主要风险提示（外资投行普遍提及）：海外利率与美元流动性、三季报盈利验证、地缘冲突与油价扰动、交易结构拥挤度。</div>
   <!-- 总结 -->
   <div class="sec-title">总结 <span class="en">Takeaways</span></div>
   <div class="card" id="sum-card" style="padding:20px 24px;"></div>
@@ -529,11 +536,13 @@ function erpSlice(){
   renderAll();
 })();
 
-/* ---------- 股指期货当月基差：品种×窗口切换 + 读数条（v2.6.5） ---------- */
+/* ---------- 股指期货当月基差：品种×窗口切换 + 存续合约表（v2.6.5） ---------- */
 var FUT_UI={idx:'沪深300',win:125};   // win 125/375/0 点数，0=全部
+var FUTPRODS=['沪深300','上证50','中证500','中证1000'];
 (function(){
   if(!DATA.futAll) return;
-  document.getElementById('fut-asof').textContent=DATA.asof;
+  document.getElementById('fut-asof').textContent=(DATA.futTab||{})[FUT_UI.idx]?
+    (DATA.futTab[FUT_UI.idx].date+'（现货 '+fmt(DATA.futTab[FUT_UI.idx].spot,1)+'）'):DATA.asof;
   function seg(id,items,key){
     document.getElementById(id).innerHTML=items.map(it=>
       '<button data-v="'+it[0]+'"'+(String(FUT_UI[key])===String(it[0])?' class="on"':'')+'>'+it[1]+'</button>').join('');
@@ -541,26 +550,36 @@ var FUT_UI={idx:'沪深300',win:125};   // win 125/375/0 点数，0=全部
       b.onclick=()=>{FUT_UI[key]=(key==='win')?(+b.dataset.v||0):b.dataset.v;renderFutAll();};
     });
   }
-  function renderStrip(){
-    const c=(DATA.futCur||{})[FUT_UI.idx];
-    const el=document.getElementById('fut-strip');
-    if(!c){el.innerHTML='<span style="font-size:12px;color:#98a0ad;">期货数据暂缺</span>';return;}
-    const pos=c.rate>=0;
-    const items=[
-      ['当月合约', c.code, '剩余 '+c.ddays+' 自然日交割'],
-      ['期货 / 现货', fmt(c.fut,1)+' / '+fmt(c.spot,1), '收盘对收盘'],
-      ['基差', (c.basis>0?'+':'')+fmt(c.basis,1)+' 点', pos?'升水':'贴水'],
-      ['基差率', (pos?'+':'')+fmt(c.rate,2)+'%', pos?'期货升水':'期货贴水']
-    ];
-    el.innerHTML=items.map(it=>
-      '<div class="ei"><div class="k">'+it[0]+'</div>'+
-      '<div class="v" style="color:'+((it[0]==='基差'||it[0]==='基差率')?(pos?'#c0392b':'#1e8e5a'):'')+'">'+it[1]+'</div>'+
-      '<div class="t">'+it[2]+'</div></div>').join('');
+  function renderTable(){
+    const tb=document.getElementById('tb-fut'); tb.innerHTML='';
+    const all=[];
+    FUTPRODS.forEach(nm=>{
+      const t=(DATA.futTab||{})[nm];
+      if(!t) return;
+      t.rows.forEach((row,i)=>{
+        const pos=row.rate>=0;
+        const tr=document.createElement('tr');
+        tr.innerHTML='<td class="l">'+(i===0?'<span class="idx">'+nm+'</span>':'')+'</td>'+
+          '<td>'+row.code+'</td>'+
+          '<td>'+fmt(row.fut,1)+'</td>'+
+          '<td class="'+(pos?'up':'down')+'">'+(row.basis>0?'+':'')+fmt(row.basis,1)+'</td>'+
+          '<td class="'+(pos?'up':'down')+'">'+(pos?'+':'')+fmt(row.rate,2)+'%</td>'+
+          '<td class="'+(pos?'up':'down')+'">'+(row.ann==null?'—':((row.ann>0?'+':'')+fmt(row.ann,1)+'%'))+'</td>'+
+          '<td class="dim">'+row.ddays+' 天</td>';
+        tb.appendChild(tr);
+      });
+      t.rows.forEach(row=>{ if(row.ann!=null) all.push({nm:nm,code:row.code,ann:row.ann}); });
+    });
+    const top=all.filter(x=>x.ann<0).sort((a,b)=>a.ann-b.ann).slice(0,3);
+    document.getElementById('fut-cmt').innerHTML=top.length?
+      '· <b>年化贴水最深前三</b>：'+top.map(x=>x.nm+' '+x.code+'（'+fmt(x.ann,1)+'%）').join('、')+'。' : '';
   }
   function renderFutAll(){
-    seg('fut-idx',[['沪深300','沪深300'],['上证50','上证50'],['中证500','中证500'],['中证1000','中证1000']],'idx');
+    seg('fut-idx',FUTPRODS.map(n=>[n,n]),'idx');
     seg('fut-win',[['125','近一年'],['375','近三年'],['0','全部']],'win');
-    renderStrip();
+    document.getElementById('fut-asof').textContent=(DATA.futTab||{})[FUT_UI.idx]?
+      (DATA.futTab[FUT_UI.idx].date+'（现货 '+fmt(DATA.futTab[FUT_UI.idx].spot,1)+'）'):DATA.asof;
+    renderTable();
     if(window.__renderFutChart)window.__renderFutChart();
   }
   renderFutAll();
@@ -725,6 +744,30 @@ function renderCharts(){
         '窗口均值 <b>'+s.mean.toFixed(2)+'%</b> · ±1σ ['+s.m1.toFixed(2)+', '+s.p1.toFixed(2)+'] · 当前 <b>'+s.cur.toFixed(2)+'%</b>（窗口分位 '+s.pct.toFixed(0)+'%）';
     };
     __renderERPChart();
+  }
+
+  /* cFUT 股指期货当月基差（v2.6.5：与读数表共用 FUT_UI，联动渲染） */
+  if(DATA.futAll && document.getElementById('cFUT')){
+    const futChart=echarts.init(document.getElementById('cFUT'));
+    window.__renderFutChart=function(){
+      const all=DATA.futAll;
+      const N=all.dates.length,i0=FUT_UI.win?Math.max(0,N-FUT_UI.win):0;
+      const xs=[],ys=[];
+      for(let k=i0;k<N;k++){xs.push(all.dates[k]);ys.push(all.series[FUT_UI.idx][k]);}
+      futChart.setOption({
+        grid:{left:52,right:22,top:26,bottom:42},
+        tooltip:{trigger:'axis',formatter:ps=>fmtD(ps[0].axisValue)+'<br>'+'基差率：<b>'+(ps[0].value===null||ps[0].value===undefined?'—':ps[0].value.toFixed(2)+'%')+'</b>'},
+        xAxis:{type:'category',data:xs,axisLine:{lineStyle:{color:'#d5dbe4'}},axisLabel:{color:'#98a0ad',fontSize:10,interval:'auto',formatter:fmtDs}},
+        yAxis:{type:'value',name:'基差率%',nameTextStyle:{color:'#98a0ad',fontSize:10},
+          splitLine:{lineStyle:{color:'#eef1f5'}},axisLabel:{color:'#98a0ad',fontSize:10,formatter:'{value}%'},scale:true},
+        series:[{name:'基差率',type:'line',smooth:true,symbol:'none',connectNulls:true,
+          lineStyle:{width:2,color:'#1a4f9c'},itemStyle:{color:'#1a4f9c'},
+          areaStyle:{color:'rgba(26,79,156,0.05)'},data:ys,
+          markLine:{silent:true,symbol:'none',lineStyle:{color:'#c8352b',type:'dashed',width:1.4},
+            label:{formatter:'0（平衡）',color:'#c8352b',fontSize:10,position:'insideEndTop'},data:[{yAxis:0}]}}]
+      },true);
+    };
+    window.__renderFutChart();
   }
 
   /* 自适应：窗口缩放 / 高分屏 / 字体加载后重排所有图表，避免宽度漂移 */
