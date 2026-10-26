@@ -210,6 +210,59 @@ for nm in ORDER:
     shareAll["series"][nm] = [round(mp[d], 1) if d in mp else None for d in share_days]
 
 
+# ---------- 股指期货当月基差（v2.6.5：IH/IF/IC/IM 升贴水，情绪面） ----------
+# 期货当月连续由 fetch_futures.py 拼接（交割日次一交易日起切换次月合约）；
+# 基差率 =（期货/现货 − 1）×100。现货：沪深300/上证50/中证500 复用 close_history.json
+# （与 PE/PB Band 同源），中证1000 用 futures_kline.json 内 SPOT852（东财 K 线）。
+import datetime as _dt
+import calendar as _cal
+FUTPROD = [("IF", "沪深300"), ("IH", "上证50"), ("IC", "中证500"), ("IM", "中证1000")]
+try:
+    FUTBLOB = json.load(open(BASE + "data/futures_kline.json", encoding="utf-8"))
+except Exception:
+    FUTBLOB = {}
+
+
+def _third_friday(y, m):
+    fr = [_dt.date(y, m, d) for d in range(1, _cal.monthrange(y, m)[1] + 1)
+          if _dt.date(y, m, d).weekday() == 4]
+    return fr[2]
+
+
+def _contract_code(prod, d_iso):
+    d = _dt.date.fromisoformat(d_iso)
+    y, m = d.year, d.month
+    if d > _third_friday(y, m):
+        y, m = (y + (m == 12), 1 if m == 12 else m + 1)
+    return prod + "%02d%02d" % (y % 100, m)
+
+
+_fut_days = sorted({d for prod, _nm in FUTPROD
+                    for d in FUTBLOB.get(prod, {}) if d <= _ASOF_ISO})
+_fut_days = _tail2(_fut_days)                     # 每 2 日抽 1 点、锚定最新
+futAll = {"dates": [int(d.replace("-", "")[2:]) for d in _fut_days], "series": {}}
+futCur = {}
+for _prod, _nm in FUTPROD:
+    _fmp = FUTBLOB.get(_prod, {})
+    _smp = (FUTBLOB.get("SPOT852", {}) if _prod == "IM"
+            else CLOSE_HIST.get(CODE[_nm], {}))
+    futAll["series"][_nm] = [
+        round((_fmp[d] / _smp[d] - 1) * 100, 3)
+        if _fmp.get(d) and _smp.get(d) else None
+        for d in _fut_days]
+    _ok = [d for d in sorted(_fmp)
+           if d <= _ASOF_ISO and _fmp.get(d) and _smp.get(d)]
+    if _ok:
+        d = _ok[-1]
+        f, s = _fmp[d], _smp[d]
+        code = _contract_code(_prod, d)
+        exp = _third_friday(2000 + int(code[2:4]), int(code[4:6]))
+        futCur[_nm] = {"code": code, "fut": f, "spot": s,
+                       "basis": round(f - s, 1),
+                       "rate": round((f / s - 1) * 100, 3),
+                       "ddays": (exp - _dt.date.fromisoformat(d)).days}
+
+
 # ---------- 动态生成「总结」（随数据变化，避免硬编码过期） ----------
 def _p1(v):
     return "—" if v is None else ("%+.1f%%" % v)
@@ -347,6 +400,7 @@ DATA = {
     "bond10y": BOND10Y, "bondDate": BONDDATE, "rows": rows,
     "band": band_data(),
     "pcrAll": pcrAll, "shareAll": shareAll,
+    "futAll": futAll, "futCur": futCur,
     "pcrStart": cfg.fmt(_pmin), "sciPcrStart": cfg.fmt(_smin),
     "views": _views(), "syn": MAN.get("syn", {}),
     "summary": summary_html,

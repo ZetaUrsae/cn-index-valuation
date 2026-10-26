@@ -80,8 +80,9 @@ $NODE = C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
 
 ## 五、第 4 步交付自检三件事
 
-1. 报告能打开、图表齐全、"数据日期"= 最近交易日；体积 26~30 万字节（实测 28.4 万，
-   v2.6.2 起含 PCR/份额全历史序列约 +3 万，Band/ERP 周采样序列另占 ~15 万），
+1. 报告能打开、图表齐全、"数据日期"= 最近交易日；体积 28~34 万字节（实测 33.1 万，
+   v2.6.5 起含股指期货基差序列约 +3 万；v2.6.2 起 PCR/份额全历史序列约 +3 万，
+   Band/ERP 周采样序列另占 ~15 万），
    明显偏小（<20 万）说明 Band、ERP 或 PCR/份额历史序列丢了 → 按 RUNBOOK 5.1 排查。
 2. `work/provenance.json`：`etf_share` 域正常只有 `exchange_etf_share`（沪市 4 只）+
    `szse_etf_share`（深市 1 只）；补过缺口当天会多一条 `szse_etf_share_range`，属正常；
@@ -100,8 +101,9 @@ $NODE = C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
   v2.5.7 起 `scripts/cfg.py` 的 ASOF 推导也改走上交所日历——**整条日常链路
   （取数 + 加工）零 Tushare 请求**（此前 `import cfg` 会隐性调一次 trade_cal）。
 - **只取增量**：`OVERLAP_BY_DOMAIN` 各域默认 1 天；不要设 `IV_OVERLAP`
-  （放大回看窗口会重拉历史，还可能打光深交所配额）。正常一次 21~30 发请求 / 10~20 秒，
-  请求数暴涨即异常（close_hist 每逢新交易日 +5 发，已最新则 0 发）。
+  （放大回看窗口会重拉历史，还可能打光深交所配额）。正常一次 21~30 发请求 / 10~20 秒
+  （新交易日 close_hist +5 发、fetch_futures +9~13 发，已最新则 0 发），
+  请求数暴涨即异常。
 - **版式与计算逻辑在代码里**：改内容改 `data/manual_inputs.json`；`reports/` 里的 HTML
   是产物，每次重生成会覆盖。
 

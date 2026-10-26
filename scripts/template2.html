@@ -249,6 +249,16 @@
   </div></div>
   <div class="note">· 持仓PCR ＝ 认沽期权持仓量合计 / 认购期权持仓量合计，按各指数<b>主要 ETF 期权</b>逐日汇总；成交PCR 同法但用成交量。· 样本区间：<b id="pcrrange">—</b>。· 判读：PCR 处历史低位通常对应"情绪偏乐观 / 对冲需求低"，属<b>反向指标</b>——极端低位需警惕一致性预期过强；高位则常见于恐慌阶段。· 深市（创业板ETF 159915）持仓量取深交所「交易持仓汇总统计」披露的<b>对冲后单边</b>原值，与官网页面逐位一致；2026-09-08 及更早为双边口径（约高 6%），故<b>创业板指</b>的历史分位跨该断点，仅供相对参照。</div>
 
+  <div class="card" style="margin-top:16px;padding:16px 18px 8px;">
+    <div class="c-title">股指期货当月基差走势 <span style="font-weight:400;font-size:11px;color:#98a0ad;">基差率 =（期货 − 现货）/ 现货 × 100</span></div>
+    <div class="band-ctl"><div class="seg" id="fut-idx"></div><div class="seg" id="fut-win"></div></div>
+    <div id="cFUT" class="chart"></div>
+    <div class="c-sub" style="margin:6px 0 0;">0 轴＝升贴水平衡；线下为<b>贴水</b>（期货折价，常反映对冲需求旺盛、情绪偏谨慎），线上为<b>升水</b>（情绪偏乐观）</div>
+    <div class="c-title" style="font-size:13px;margin-top:14px;">当前读数（<span id="fut-asof">—</span>）</div>
+    <div id="fut-strip" class="erp-strip" style="margin-top:9px;"></div>
+  </div>
+  <div class="note">· 当月连续由各月份合约日收盘拼接（<b>交割日次一交易日起切换次月合约</b>）；期货收盘来自新浪财经合约日 K 线，现货收盘与估值表同源（中证1000 为东财 K 线）。· IF/IH/IC 期货历史自 2018-10 起（新浪可查下界），IM 自 2022-07 上市起。· <b>贴水有季节性</b>：5–7 月分红集中期，指数除息令现货自然走低、贴水天然偏深，宜与历史同期比较。· 深贴水长期存在也包含雪球等场外对冲盘的卖出压力，与单纯情绪悲观需区分。</div>
+
   <!-- 四、技术面 -->
   <div class="sec-title">四、技术面：K线形态与均线位置 <span class="en">Technicals</span><span class="hint">近 60 个交易日</span></div>
   <div class="card"><div class="tblwrap">
@@ -517,6 +527,43 @@ function erpSlice(){
   }
   window.__renderERPAll=renderAll;
   renderAll();
+})();
+
+/* ---------- 股指期货当月基差：品种×窗口切换 + 读数条（v2.6.5） ---------- */
+var FUT_UI={idx:'沪深300',win:125};   // win 125/375/0 点数，0=全部
+(function(){
+  if(!DATA.futAll) return;
+  document.getElementById('fut-asof').textContent=DATA.asof;
+  function seg(id,items,key){
+    document.getElementById(id).innerHTML=items.map(it=>
+      '<button data-v="'+it[0]+'"'+(String(FUT_UI[key])===String(it[0])?' class="on"':'')+'>'+it[1]+'</button>').join('');
+    document.getElementById(id).querySelectorAll('button').forEach(b=>{
+      b.onclick=()=>{FUT_UI[key]=(key==='win')?(+b.dataset.v||0):b.dataset.v;renderFutAll();};
+    });
+  }
+  function renderStrip(){
+    const c=(DATA.futCur||{})[FUT_UI.idx];
+    const el=document.getElementById('fut-strip');
+    if(!c){el.innerHTML='<span style="font-size:12px;color:#98a0ad;">期货数据暂缺</span>';return;}
+    const pos=c.rate>=0;
+    const items=[
+      ['当月合约', c.code, '剩余 '+c.ddays+' 自然日交割'],
+      ['期货 / 现货', fmt(c.fut,1)+' / '+fmt(c.spot,1), '收盘对收盘'],
+      ['基差', (c.basis>0?'+':'')+fmt(c.basis,1)+' 点', pos?'升水':'贴水'],
+      ['基差率', (pos?'+':'')+fmt(c.rate,2)+'%', pos?'期货升水':'期货贴水']
+    ];
+    el.innerHTML=items.map(it=>
+      '<div class="ei"><div class="k">'+it[0]+'</div>'+
+      '<div class="v" style="color:'+((it[0]==='基差'||it[0]==='基差率')?(pos?'#c0392b':'#1e8e5a'):'')+'">'+it[1]+'</div>'+
+      '<div class="t">'+it[2]+'</div></div>').join('');
+  }
+  function renderFutAll(){
+    seg('fut-idx',[['沪深300','沪深300'],['上证50','上证50'],['中证500','中证500'],['中证1000','中证1000']],'idx');
+    seg('fut-win',[['125','近一年'],['375','近三年'],['0','全部']],'win');
+    renderStrip();
+    if(window.__renderFutChart)window.__renderFutChart();
+  }
+  renderFutAll();
 })();
 
 /* ================= charts ================= */

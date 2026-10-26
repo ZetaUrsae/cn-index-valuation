@@ -134,6 +134,7 @@ IV_FORCE="valuation=em_valuation" $PY run_daily.py --fetch-only
 | `data/pcr_raw.csv` | run_daily sync_pcr | 期权 PCR 日度聚合（2022-10 起） | ❌ **禁止** |
 | `data/yield10y_history.json` | run_daily 第 5 步 / fetch_yield_tail.py | 10Y 国债日频（2002 起，扁平字典） | ❌ **禁止** |
 | `data/close_history.json` | fetch_close_hist.py（run_daily 第 6 步，非致命） | 五指数日收盘价 2015 起（2015~2019 为 Tushare 2026-10-21 一次性回填，其后东财 K 线增量），PE/PB Band 与点位分位/点位中位数（v2.6.3）专用 | ❌ **禁止** |
+| `data/futures_kline.json` | fetch_futures.py（run_daily 第 7 步，非致命） | IH/IF/IC/IM 当月连续日收盘（新浪合约 K 线拼接，2018-10 起）+ 中证1000 现货 SPOT852（东财，2022-01 起）+ `_meta.contract` 当前当月合约码，情绪面基差图（v2.6.5）专用 | ❌ **禁止** |
 | `data/opt_contracts.json` | meta.py | 期权合约表缓存（TTL 4 天） | ⚠ 可删，会重新拉（慢） |
 | `data/em_constituents.json` | em_valuation | 东财成分股缓存（TTL 7 天） | ⚠ 可删，会重拉 |
 | `data/etf_meta.json` | meta.py | ETF 名称/管理人/费率缓存 | ⚠ 可删，有内置兜底 |

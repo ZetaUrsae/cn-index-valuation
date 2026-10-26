@@ -31,6 +31,7 @@ Tushare 只在人工指令（`sync_tushare.py`，或显式设 `IV_ALLOW_TUSHARE=
 | `etf_quote` ETF 行情 | `sina_quote` → `tushare_etf_quote` | 新浪 | — | 否 |
 | `bond10y` 10Y 国债 | `em_bond10y`（唯一源；`manual_bond10y` 已于 v2.4.0 删除） | 东财（中债数据） | 2002-01-04 | 否 |
 | `close_hist` 指数收盘价（Band 图专用） | `fetch_close_hist.py`：东财 K 线 `push2his`（日常增量）；2015~2019 为 Tushare `index_daily` **一次性回填（2026-10-21，仅此一次）** | 东财 K 线 | 2015-01-05（科创50 自基日） | 已回填段是；此后否 |
+| `futures` 股指期货当月连续 + 中证1000 现货 | `fetch_futures.py`（v2.6.5，run_daily 补步骤，非致命；`--seed` 一次性全量 2026-10-26 已完成） | 新浪合约日 K 线拼接 + 东财 K 线（现货） | 2018-10-22（IM 2022-07-22；现货 2022-01-04） | 否 |
 | `calendar` 交易日历 | `sse_calendar` → `local_calendar` | 上交所 | — | 否 |
 
 > `csi_valuation` / `csi_quote`（中证指数官网）**不在任何主链里**，
@@ -427,7 +428,7 @@ python tools/verify_sources.py --csv
 | 一、基本面 · PE/PB Band | 估值带：收盘价 + 窗口均值±1σ/±2σ×当期EPS/BPS（指数/3·5·10年/PE·PB 可切换） | `data/raw.json` + `data/close_history.json` | `gen2.py`(band_data) | 东财聚合 PE/PB + 东财 K 线 close（2015~2019 为 Tushare 一次性回填） |
 | 一、基本面 · ERP 子章节 | 交互式走势图（五指数×窗口可切换）+ 沪深300 读数条（固定日频口径） | `data/yield10y_history.json` + `data/raw.json` | `gen2.py`(erp_weekly) | 东财 `RPTA_WEB_TREASURYYIELD`（中债）+ 东财聚合 PE |
 | 二、资金面              | ETF 份额 5/20/60 日变化、YTD（表格）+ 份额走势图（全部/近三年/近一年可切换） | `work/shares.json`、`data/etf_raw.json` | `proc2.py` + `gen2.py`(shareAll) | 上交所/深交所官方快照（深市兜底 Tushare） |
-| 三、情绪面              | 期权持仓 PCR 及历史分位 + PCR 走势图（窗口可切换，分位固定全样本） | `work/pcr.json`、`data/pcr_raw.csv` | `proc2.py` + `gen2.py`(pcrAll) | 上交所/深交所期权日报官方接口 |
+| 三、情绪面              | 期权持仓 PCR 及历史分位 + PCR 走势图（窗口可切换，分位固定全样本）；股指期货当月基差走势（IH/IF/IC/IM，品种×窗口可切换）+ 读数条 | `work/pcr.json`、`data/pcr_raw.csv`、`data/futures_kline.json` | `proc2.py` + `gen2.py`(pcrAll/futAll) | 上交所/深交所期权日报官方接口 + 新浪期货 K 线 + 东财 K 线（中证1000 现货） |
 | 四、技术面              | 近 60 日 K 线 + MA5/20/60/120/250 | `work/tech.json`                                                               | `tech.py`               | 新浪财经 K 线（经 raw.json daily）                          |
 | 五、四维信号矩阵           | 四维信号标签汇总                       | 上述全部                                                                           | `gen2.py`（signal 函数） | 同上四维                                                |
 | 总结                 | 自动生成的文字结论                      | 同上全部                                                                           | `gen2.py`（summary_html） | 由各章数据实时排序生成，**非人工**                                 |
@@ -440,7 +441,8 @@ python tools/verify_sources.py --csv
 
 `run_daily.py` 依次执行 5 个同步步骤：**① 指数行情 → ② 指数估值 → ③ 期权 PCR →
 ④ ETF 份额与行情 → ⑤ 10Y 国债尾部补齐（非致命）**，
-其后还有一个**补步骤：指数收盘价历史增量（非致命，东财 K 线，`fetch_close_hist.py`）**。
+其后还有两个**补步骤（均非致命）**：指数收盘价历史增量（东财 K 线，`fetch_close_hist.py`）、
+股指期货当月连续 + 中证1000 现货（新浪/东财，`fetch_futures.py`，v2.6.5 起）。
 
 每个域的**优先级链、日常实际源、历史下界、Tushare 参与度**，唯一权威表在
 本文件**第一部分第一节「总览」**，此处不重复。
@@ -548,6 +550,24 @@ python tools/verify_sources.py --csv
   更早为 Tushare 双边，创业板指 PCR 历史分位跨该断点，页面已注明。
 - **已知口径差**：到期日（周三）交易所报结算后持仓、Tushare 报收盘持仓，  
   `KNOWN_OI_DIVERGENCE` 已在 `ivdata/providers/exchange.py` 记录离群日。
+
+### 三、情绪面（续）：股指期货当月基差（v2.6.5）
+
+- **字段**：`DATA.futAll`（`dates` YYMMDD 整数每 2 日抽 1 点锚定最新 + `series` 四品种
+  基差率%，缺日 null）；`DATA.futCur`（各品种当前读数：`code` 当月合约、`fut/spot` 收盘、
+  `basis` 基差点数、`rate` 基差率%、`ddays` 距交割自然日）。
+- **基差率** =（期货当月连续收盘 / 现货收盘 − 1）× 100；负＝贴水、正＝升水。
+- **当月连续拼接**（fetch_futures.py）：交易日 t 的当月合约 = t 所在月份合约，
+  **晚于当月第三个周五（交割日）用次月**；由新浪各合约日 K 线拼接，
+  逐位可复核（IF 2026-10-23=4080.2 与 IF2611 合约 K 线一致）。
+- **现货**：沪深300/上证50/中证500 复用 `data/close_history.json`（与 Band 同源）；
+  中证1000 为 `futures_kline.json` 内 `SPOT852`（东财 K 线，2022-01 起）。
+- **历史下界**：IF/IH/IC 自 **2018-10-22**（新浪合约 K 线可查下界，更早返回空）；
+  IM 自 **2022-07-22**（上市日）。新浪 `IF0` 等连续代码是**主力连续**（按持仓量移仓），
+  与当月连续口径不同，**未采用**。
+- **判读**：贴水常反映对冲需求与谨慎情绪；5–7 月分红季贴水天然偏深（指数除息），
+  宜与历史同期比较；深贴水亦含雪球等场外对冲盘卖出压力。期货收盘为新浪日 K 收盘，
+  交割日当日仍用当月合约（收敛于现货）。
 
 ### 四、技术面：K 线形态与均线
 

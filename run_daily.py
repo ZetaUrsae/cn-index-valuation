@@ -239,6 +239,17 @@ def main() -> int:
     except Exception as e:                       # noqa: BLE001
         print("  !! close_hist 调用失败（非致命）: %s" % e, flush=True)
 
+    # 股指期货当月连续 + 中证1000 现货（情绪面升贴水图用）：非致命
+    print("\n[补] 股指期货当月连续（新浪）与中证1000 现货（非致命）", flush=True)
+    try:
+        rc, out, err = _run("fetch_futures.py", dict(os.environ, ASOF=asof))
+        for line in out.strip().splitlines()[-6:]:
+            print("    " + line)
+        if rc != 0:
+            print("    !! futures rc=%s（非致命，继续）" % rc)
+    except Exception as e:                       # noqa: BLE001
+        print("  !! futures 调用失败（非致命）: %s" % e, flush=True)
+
     # ---------- 溯源 ----------
     prov_path = p.finish()
     print("\n数据来源溯源：")
