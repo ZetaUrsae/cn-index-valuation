@@ -22,7 +22,7 @@ $PY tools/verify_sources.py --csv       # 每周：多源交叉校验（只读�
 ```
 
 日常运行完全自动（定时任务周一至五 06:00），无需人工干预。
-完整命令、环境变量、故障排查见 [docs/RUNBOOK.md](docs/RUNBOOK.md)。
+完整命令、环境变量、故障排查见 [docs/RUNBOOK.md](docs/RUNBOOK.md)；定时任务每日执行清单见 [docs/DAILY.md](docs/DAILY.md)。
 
 ---
 
@@ -46,15 +46,20 @@ $PY tools/verify_sources.py --csv       # 每周：多源交叉校验（只读�
 
 ## 文档地图
 
+主文档 5 份 + 变更记录，**每个主题只在一处详述**：
+
 | 想做什么 | 看哪份 |
 |----------|--------|
 | 了解项目、跑起来 | 本文件 |
-| 报告某一章/某个数字从哪来、数据文件字典 | [docs/REPORT_DATA_MAP.md](docs/REPORT_DATA_MAP.md) |
-| 查某个数据源的接口、单位、口径、精度 | [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) |
+| **定时任务每天照着执行**（判重 → 出报告 → 写观点 → 自检 → 推送 GitHub） | [docs/DAILY.md](docs/DAILY.md) |
+| 手工运行、环境变量、数据文件清单、排障、改动后验收 | [docs/RUNBOOK.md](docs/RUNBOOK.md) |
+| 查某个数字从哪来：数据源接口/单位/口径 + 报告章节映射 | [docs/DATA.md](docs/DATA.md) |
 | 改取数层代码、加数据源、理解调度语义 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| 手工运行、排障、改动后验收、**定时任务每日执行清单**（第七节） | [docs/RUNBOOK.md](docs/RUNBOOK.md) |
 | 查"什么时候为什么改了" | [docs/CHANGELOG.md](docs/CHANGELOG.md) |
-| 文档分工与历史审计报告 | [docs/INDEX.md](docs/INDEX.md) |
+
+写文档的约定：同一内容不要在两份文档里各写一遍（第二处写指针）；主文档只写当前状态，
+历史演进进 CHANGELOG；每个"坑"写清**现象 → 原因 → 处理**。历史审计报告在 `docs/audits/`
+（一次性诊断，勿当现状）。
 
 ---
 
@@ -86,11 +91,11 @@ index_valuation/
 ## 其他约定
 
 - **报告版式与口径约定**（章节顺序、红涨绿跌、日期标注规则）见
-  [docs/REPORT_DATA_MAP.md](docs/REPORT_DATA_MAP.md) 第五节；
+  [docs/DATA.md](docs/DATA.md) 第二部分末尾（原 REPORT_DATA_MAP 第五节）；
   改版式请改 `scripts/template2.html`，不要手改报告。
 - **定时任务**：WorkBuddy 定时任务 `Index Valuation Daily`（id `f3a34004-…`），
-  五步流程见 [docs/RUNBOOK.md](docs/RUNBOOK.md) 第七节。
-- **旧管线**：`scripts/run_weekly.py`（v1，全 Tushare）仅作备用，说明见 RUNBOOK 第八节。
+  五步流程见 [docs/DAILY.md](docs/DAILY.md)。
+- **旧管线**：`scripts/run_weekly.py`（v1，全 Tushare）仅作备用，说明见 RUNBOOK 第七节。
 - **非管线脚本**：`scripts/gen.py`/`template.html`（旧版估值表，已被 gen2.py 取代）、
   `recompute_sharpe.py`、`reorder.py`（一次性修正工具）、`fetch*.py`（v1 取数）。
 

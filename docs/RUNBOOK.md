@@ -1,6 +1,6 @@
 # 执行手册（RUNBOOK）
 
-面向"每天要跑一次、出问题要能查"的场景。所有命令都在
+面向"人工要能操作、出问题要能查"的场景。所有命令都在
 `D:/QClaw/Stock/index_valuation/` 下执行，Python 用固定路径：
 
 ```
@@ -8,6 +8,10 @@ C:/Users/zky12/.workbuddy/binaries/python/envs/default/Scripts/python.exe
 ```
 
 下文简写为 `$PY`。
+
+> **定时任务的每日执行清单已独立为 [DAILY.md](DAILY.md)**（定时任务唯一自动加载的文档，
+> 2026-10-26 起与提示词配套）。本手册供**人工查阅**：手工运行、环境变量、数据文件清单、
+> 排障、改动后验收。
 
 ---
 
@@ -26,7 +30,7 @@ ls -lt reports/*.html | head -3
 
 ### 1.2 人工指令（Tushare 校准 / 补数，默认不跑）
 
-为什么不再周期性跑，见 [DATA_SOURCES.md](DATA_SOURCES.md) 第三节（一句话：2015–2017 段
+为什么不再周期性跑，见 [DATA.md](DATA.md) 第一部分第三节（一句话：2015–2017 段
 已写定冻结，日常增量公开源全覆盖，深市份额缺口由深交所区间报表回补）。需要人工校准时：
 
 ```bash
@@ -70,7 +74,7 @@ $PY tools/verify_sources.py --csv
 ```bash
 $PY run_daily.py                        # 正常跑一次（约 10~15 秒，21~25 发请求）
 $PY run_daily.py --check                # 只判重：RUN / SKIP（定时任务第 1 步）
-$PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，不参与判重（见 7.2）
+$PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，不参与判重（见 DAILY.md 二）
 $PY run_daily.py --fetch-only --asof 20261016   # 只补某天的数据（不出报告）
 $PY run_daily.py --fetch-only           # 只取数不出报告（调试数据源，不触碰 reports/）
 $PY run_daily.py --skip-bond            # 跳过 10Y 补齐（东财 10Y 慢/挂时用，ERP 末点会滞后）
@@ -104,7 +108,7 @@ $PY run_daily.py --skip-bond            # 跳过 10Y 补齐（东财 10Y 慢/挂
 | `IV_QPS` | `5` | 每源每秒请求上限 |
 | `IV_OVERLAP` | 不设（按域 1 天） | 全局覆盖各域回看窗口，仅排障用（例如 `IV_OVERLAP=30` 重算最近一个月）；不设则各域只重取最后 1 天 |
 | `IV_OPT_CONTRACT_DETAIL` | `0` | 设 `1` 才逐合约取期权明细（数据量大） |
-| `IV_REPORT_TAG` | 空 | 试运行标记，报告名加 `_后缀`，不参与判重（等同 `--tag`，见 7.2） |
+| `IV_REPORT_TAG` | 空 | 试运行标记，报告名加 `_后缀`，不参与判重（等同 `--tag`，见 DAILY.md 二） |
 
 示例：
 
@@ -121,7 +125,7 @@ IV_FORCE="valuation=em_valuation" $PY run_daily.py --fetch-only
 ## 四、产物与中间文件
 
 > 本表是数据文件的**唯一权威清单**（含写入者）。报告各章节与这些文件的对应关系
-> 见 [REPORT_DATA_MAP.md](REPORT_DATA_MAP.md)。
+> 见 [DATA.md](DATA.md) 第二部分。
 
 | 路径 | 写入者 | 内容 | 可否删除 |
 |------|--------|------|----------|
@@ -370,144 +374,10 @@ $PY tools/verify_sources.py --asof <日期>
 
 ---
 
-## 七、定时任务
-
-WorkBuddy 定时任务 id `f3a34004-bac1-43d5-9212-ef7b0312c5ca`，
-名称 **Index Valuation Daily**，周一至周五 06:00，工作目录 `D:/QClaw/Stock/index_valuation`。
-
-> **本节是定时任务提示词的操作细则。** 提示词按"做什么"列五步（判重 → 出报告 → 写观点
-> → 自检交付 → 推送 GitHub → 失败停手），判据、命令原文、失败处理以本节为准；
-> 改流程时先改本节，提示词只跟着改步骤本身。
->
-> `$PY` = `C:/Users/zky12/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
-
-### 7.1 五步流程
-
-| # | 步骤 | 做什么 | 命令 / 判据 | 失败怎么办 |
-|---|------|--------|-------------|-----------|
-| 1 | 运行判断 | `$PY run_daily.py --check` 输出 `SKIP <asof> …` → 回复"最近交易日的报告已定稿，无需重复处理"并结束（SKIP ≠ 休市：可能休市、也可能当天已跑过；句末若附"另有试运行文件…（不计入判重）"，只是提示，不影响判定） | 退出码 0，另发 1 次日历请求 | — |
-| 2 | 生成报告 | 跑 v2 管线；产出**正式文件名**（不带 `--tag` 标记） | `cd D:/QClaw/Stock/index_valuation && $PY run_daily.py` | 见 7.4 |
-| 3 | 补写机构观点 | **按机构写，一行一家**：`views` 为列表，每项 `{"org": 机构, "date": 发布日（YYYY-MM，查得到精确日则 YYYY-MM-DD）, "scope": 覆盖标的, "view": 观点}`；只收**外资投行**（高盛/摩根士丹利/摩根大通/瑞银/野村/花旗/美银/德银等）对沪深300 / 创业板指 / A股整体的观点。观点文本里**不要写指标数字**——报告右列"对照读数"由脚本按当日数据自动生成。`syn` 仍按指数写一句话结论（只沪深300、创业板指）。**时效与核实（2026-10-21 起）**：只收**当月或上个月**发布（按月份判断，以数据日为基准）的观点，且必须核实发布日期（找原始报道/研报，标注到日）；查不到发布时间、或设定后长期未更新的存量目标，一律不收，宁可少收不编造 | `cd scripts && ASOF=<第2步数据日期> $PY gen2.py` | 查不到可靠观点就跳过，不编造 |
-| 4 | 自检交付 | 见 7.5，然后展示报告 + 四句话总结 | — | — |
-| 5 | 推送 GitHub | 见 7.7。**只在第 2 步报告成功产出后执行**；单次尝试，失败不重试 | 命令见 7.7 | 失败只记一句到总结，下次运行自然补推 |
-
-### 7.2 第 1 步：判重看"是否收盘后生成"，不是看"文件在不在"
-
-`run_daily.py --check` 用日历取最近交易日 `asof`，然后按三个条件判定：
-
-| 情况 | 判定 | 输出 |
-|------|------|------|
-| `reports/index_val_report_<asof>.html` 不存在 | 需要出新报告 | `RUN <asof>　缺少…` |
-| 存在，但 mtime 早于该交易日 15:00 | 盘中/试运行产物，份额与 PCR 是未定稿值 | `RUN <asof>　…收盘前，需重跑覆盖` |
-| 存在，且 mtime 晚于 15:00 | 数据已定稿 | `SKIP <asof>　…数据已定稿` |
-
-> **为什么不用"文件存在即跳过"**：盘中试运行（例如 10:00 用当天做 asof）也会留下同名文件，
-> 次日 06:00 一旦据此跳过，这天就永远没有定稿数据。改看 mtime 后，试运行产物会在次日
-> 自动被覆盖，而节假日仍然正确地只跑一次（休市日 `asof` 停在上一个交易日，报告已定稿 → `SKIP`）。
-
-**试运行请加 `--tag`**（v2.5.1）：`python run_daily.py --tag test`
-→ 报告存为 `reports/index_val_report_<asof>_test.html`，**不参与判重**。
-判重只认无标记的正式文件名；`--check` 若发现同日的试运行文件，会在输出末尾附一句
-「另有试运行文件 …（不计入判重）」，但判定结论不受影响。
-适用场景：盘后 16:00 手工重跑、改完模板想先看效果、排障中反复运行——
-这些都不会让次日定时任务误判为「已跑过」而跳过。标记名只能用字母/数字/`-`/`_`，最长 16 字符
-（其他字符会被替换成 `-`），也可用环境变量 `IV_REPORT_TAG=test` 传。
-
-### 7.3 补充输入：只剩研究文本，没有需要联网补的数值
-
-`data/manual_inputs.json` 现在只剩**研究文本**，不含任何数值指标：
-
-| 内容 | 字段 | 现状 |
-|------|------|------|
-| 研究文本（非数据） | `views`：外资投行观点，**按机构一行一条** `{"org","date","scope","view"}` | 第 3 步撰写；报告右列"对照读数"由脚本按当日数据生成 |
-| 研究文本（非数据） | `syn`：各指数一句话结论，落在五、信号矩阵末列（只沪深300、创业板指） | 第 3 步撰写 |
-
-行情、PE/PB、期权 PCR、ETF 份额、10Y 国债全部由管线自动落库（新浪 / 东财 / 沪深交易所），
-**同一指标只允许一个写入者**。历史上两次旁路已删除：`bond10y`（2026-10-21，曾造成 ERP 末点
-断点）与 `div` 股息率（2026-10-21，见下）。
-
-**股息率为什么从报告里删掉**：中证官方 `data-service/indexValuation` 确实带 `dp`（股息率）字段，
-但只覆盖 8 只指数（含上证50、沪深300、中证500）且**只有当日快照**，没有创业板指与科创50；
-国证 `indexList`、深交所份额/行情接口均无该字段，`indexCsiDsPe` 只给 PE。
-五只标的里两只拿不到 → 列会出现两格"—"，还会让报告多一个半自动来源，故整体移除
-（2026-10-21，v2.4.0）。若将来需要恢复，接口路径与覆盖范围见 `docs/DATA_SOURCES.md`。
-
-### 7.4 第 2 步失败处理
-
-- 看输出末尾 `未完成，失败环节：...`；个别公开接口偶发失败，等 1~2 分钟重跑一次即可。
-- **行情校验拦截**（`!! asof=… 当日行情缺失`）：日历说交易日但临时休市（台风、哀悼日等不在日历里）
-  或数据源延迟时触发，管线在此停手、不出报告，防止旧数据被标成新日期。
-  处理：人工确认该日是否交易——真休市就不用管，次日 `--check` 自然 SKIP；
-  是数据延迟就晚些重跑。**不要**改 `--asof` 凑数或手工改库。
-- **同一环节连续两次失败 → 停手**，不要切 `scripts/run_weekly.py`：那是全 Tushare 管线，
-  `fetch.py` 会把 Tushare 数值写进 `data/raw.json` 历史库，违反"日常不碰 Tushare"。
-  改为把失败环节、报错原文、`work/provenance.json` 里 `ok=false` 的记录写进总结，等人工指令。
-- `10Y 国债补齐异常（非致命）` 不影响出报告。
-
-### 7.5 第 5 步自检三件事
-
-1. 报告能打开、图表齐全、"数据日期"= 最近交易日；体积 26~30 万字节（实测 28.4 万，
-   v2.6.2 起含 PCR/份额全历史序列约 +3 万，Band/ERP 周采样序列另占 ~15 万），
-   明显偏小（<20 万）说明 Band、ERP 或 PCR/份额历史序列丢了 → 按 5.1 排查。
-2. `work/provenance.json`：`etf_share` 域正常只有 `exchange_etf_share`（沪市 4 只）+
-   `szse_etf_share`（深市 1 只）；补过缺口当天会多一条 `szse_etf_share_range`，属正常；
-   出现 `tushare_*` 才是异常。
-3. 日志有 `仍有 N 日未补` = 深交所被限流，下次运行自动补齐，总结里提一句即可。
-4. **内联 JS 运行时校验（v2.6.2 起必跑，改过模板/gen2 后更必跑）**：
-   `cd D:/QClaw/Stock/index_valuation && "$NODE" tools/js_runtime_check.js reports/<报告>.html`
-   （`NODE` = `C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe`）。
-   它用 DOM/echarts 桩把报告脚本真实跑一遍——`node --check` 只能查语法，
-   **查不出「gen2 删了 DATA 字段、模板还在读」这类错误**（v2.6.2 实测教训：
-   `fund.series` 被删后资金面表崩掉、全部图表不渲染）。退出码 0 才算过。
-
-### 7.7 第 5 步：推送 GitHub（v2.6.3 起）
-
-仓库：`https://github.com/ZetaUrsae/cn-index-valuation`（私有），分支 `main`。
-仓库级身份已配置（`user.name=ZetaUrsae`、`user.email=21005787+ZetaUrsae@users.noreply.github.com`），
-凭据由 Git Credential Manager 缓存，正常 push 无需交互。
-
-```bash
-git -C D:/QClaw/Stock/index_valuation add -A
-git -C D:/QClaw/Stock/index_valuation status --porcelain   # 输出为空 → 无变更，直接结束
-git -C D:/QClaw/Stock/index_valuation commit -m "Daily report <asof>"
-git -C D:/QClaw/Stock/index_valuation push
-```
-
-规则：
-- **前置条件**：第 2 步报告成功产出。管线失败（停手场景）时**不推送**，避免把失败状态
-  提交进历史。
-- **单次尝试**（用户 2026-10-26 定）：GitHub 访问不稳定，push 失败**不重试**、
-  不影响报告交付；commit 已落在本地，下次运行会随新提交一起推上去，天然补推。
-- `git add -A` 会把新报告、data 增量、docs 改动一并纳入；`work/`、`data/cache/`、
-  `.workbuddy/` 由 `.gitignore` 排除，不会误入。
-- 一律用 `git -C <项目路径>` 形式，**不要依赖 shell 当前目录**（工作目录可能被重置，
-  2026-10-26 实测教训）。
-- push 失败时在总结里写一句「GitHub 推送失败（将在下次运行补推）」即可，不算失败环节。
-
-### 7.6 这些默认值由代码保证，这里只备查
-
-- **Tushare 不参与日常取数**：`ivdata/config.py` 里 `allow_tushare` 默认 False，
-  只有 `IV_ALLOW_TUSHARE=1` 才进降级链；`sync_tushare.py` 自行打开，属人工指令入口。
-  v2.5.7 起 `scripts/cfg.py` 的 ASOF 推导也改走上交所日历——**整条日常链路
-  （取数 + 加工）零 Tushare 请求**（此前 `import cfg` 会隐性调一次 trade_cal）。
-- **只取增量**：`OVERLAP_BY_DOMAIN` 各域默认 1 天；不要设 `IV_OVERLAP`
-  （放大回看窗口会重拉历史，还可能打光深交所配额）。正常一次 21~30 发请求 / 10~20 秒，
-  请求数暴涨即异常（close_hist 每逢新交易日 +5 发，已最新则 0 发）。
-- **版式与计算逻辑在代码里**：改内容改 `data/manual_inputs.json`；`reports/` 里的 HTML
-  是产物，每次重生成会覆盖。
-
-> 为什么第 3 步必须放在第 2 步之后：`views` / `syn` 里的"一句话解读"要引用当日
-> PCR 分位、份额 60 日变化这类由管线算出的指标。旧 prompt 把它放在管线之前，
-> 只能盲写。现在的顺序才是"先有数、再解释"。
->
-> 第 3 步失败不影响交付——第 2 步生成的报告已经带了上一次的观点，属可接受的降级。
-
----
-
-## 八、旧管线（备用）
+## 七、旧管线（备用）
 
 `scripts/run_weekly.py` 是 v1 入口（全 Tushare，10 步）。
-**仅在人工指令下使用**——定时任务不会自动切到它（见 7.4），因为它会把 Tushare 数值
+**仅在人工指令下使用**——定时任务不会自动切到它（见 DAILY.md 四），因为它会把 Tushare 数值
 写进 `data/raw.json` 历史库。
 
 ```bash
