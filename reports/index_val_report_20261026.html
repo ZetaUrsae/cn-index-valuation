@@ -26,7 +26,10 @@
     background:radial-gradient(circle,rgba(220,174,68,.22),transparent 62%);}
   .hwrap{max-width:1320px;margin:0 auto;padding:0 22px;position:relative;z-index:1;}
   header h1{margin:0 0 8px;font-size:25px;letter-spacing:.5px;font-weight:700;}
-  header .sub{color:#c3d3ea;font-size:13.5px;}
+  header .sub{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+    gap:8px 20px;color:#c3d3ea;font-size:13.5px;}
+  header .sub .asof{font-size:12.5px;color:#d7e3f5;white-space:nowrap;}
+  header .sub .asof b{color:#fff;font-weight:600;}
   .hmeta{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:16px;font-size:12.5px;color:#d7e3f5;}
   .hmeta b{color:#fff;font-weight:600;}
   .tagline{display:inline-block;margin-bottom:12px;font-size:12px;letter-spacing:2px;color:var(--gold2);
@@ -87,6 +90,21 @@
   .c-sub{font-size:11.5px;color:var(--faint);margin-bottom:8px;}
   .chart{width:100%;height:320px;}
 
+  /* 期货贴水表（v2.6.7）：品种合并单元格 + 期限胶囊 + 年化贴水条形 */
+  #tb-fut td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  #tb-fut tr.gsub td{border-top:1px dashed #e6ecf5;}
+  #tb-fut .fut-name{vertical-align:middle;text-align:left;background:#f7fafd;
+    border-left:3px solid #173f74;}
+  #tb-fut .fut-name b{display:block;font-size:13px;color:#20334c;}
+  #tb-fut .fut-name span{display:block;margin-top:2px;font-size:10.5px;color:#8494a8;font-weight:400;}
+  #tb-fut .tenor{display:inline-block;min-width:30px;padding:1px 7px;border-radius:9px;
+    background:#eef3fa;color:#3f5878;font-size:10.5px;line-height:1.5;text-align:center;}
+  #tb-fut .tenor.cur{background:#173f74;color:#fff;}
+  #tb-fut .code{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#40506b;}
+  #tb-fut .fbar{display:inline-block;width:44px;height:5px;border-radius:3px;background:#eef1f5;
+    margin-left:8px;vertical-align:middle;overflow:hidden;}
+  #tb-fut .fbar i{display:block;height:100%;border-radius:3px;}
+
   /* PE/PB Band 控件 */
   .band-ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:6px;}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
@@ -129,11 +147,9 @@
   <div class="hwrap">
     <span class="tagline">INDEX VALUATION &amp; MULTI-DIMENSION TRACKER</span>
     <h1>宽基指数 · 多维度分析图</h1>
-    <div class="sub">沪深300 · 上证50 · 中证500 · 创业板指 · 科创50 ｜ 基本面（估值）/ 资金面 / 情绪面 / 技术面 四维跟踪 · 对应 ETF 与场内期权</div>
-    <div class="hmeta">
-      <span>数据日期：<b id="asof">—</b>（收盘）</span>
-      <span>估值口径：<b>PE(TTM) / PB(LF)</b></span>
-      <span>PCR 样本：<b id="pcrwin">—</b></span>
+    <div class="sub">
+      <span class="idxlist">沪深300 · 上证50 · 中证500 · 创业板指 · 科创50</span>
+      <span class="asof">数据日期：<b id="asof">—</b>（收盘）</span>
     </div>
   </div>
 </header>
@@ -245,7 +261,8 @@
     <div class="c-title" style="font-size:13px;margin-top:14px;">全存续合约贴水（<span id="fut-asof">—</span>）</div>
     <div class="tblwrap" style="margin-top:9px;"><table>
       <thead><tr>
-        <th class="l">品种</th><th>合约</th><th>期货收盘</th><th>基差<br><span style="font-weight:400;font-size:10px;">(点)</span></th>
+        <th class="l">品种 / 现货</th><th class="l">期限</th><th class="l">合约</th><th>期货收盘</th>
+        <th>基差<span style="font-weight:400;font-size:10px;">(点)</span></th>
         <th>基差率</th><th>年化基差率</th><th>距交割</th>
       </tr></thead>
       <tbody id="tb-fut"></tbody>
@@ -318,7 +335,6 @@ document.getElementById('f1').textContent=DATA.asof;
 document.getElementById('f2').textContent=DATA.asof;
 document.getElementById('bonddate').textContent=DATA.bondDate||DATA.asof;
 document.getElementById('bond').textContent=DATA.bond10y.toFixed(4)+'%（'+(DATA.bondDate||DATA.asof)+'）';
-document.getElementById('pcrwin').textContent=DATA.pcrStart+' 起（科创50 '+DATA.sciPcrStart+' 起）';
 document.getElementById('viewasof').textContent=DATA.asof;
 document.getElementById('pcrrange').textContent='2022-10-10 至 '+DATA.pcrAsof+'（科创50 自 2023-06-05）';
 
@@ -473,7 +489,7 @@ const SYN=(DATA.syn||{});
 document.getElementById('sum-card').innerHTML=DATA.summary;
 
 /* ---------- 股债性价比（ERP）专题：图 + 读数条联动（v2.6.1） ---------- */
-var ERP_UI={idx:'沪深300',win:0};   // win 0 = 2015以来
+var ERP_UI={idx:'沪深300',win:10};   // 默认近十年（2026-10-27 用户定）；win 0 = 2015以来
 function erpSlice(){
   const d=DATA.erpS[ERP_UI.idx];
   let i0=0;
@@ -528,7 +544,7 @@ function erpSlice(){
   }
   function renderAll(){
     seg('erp-idx',DATA.rows.map(r=>[r.name,r.name]),'idx');
-    seg('erp-win',[[0,'2015以来'],[10,'10年'],[5,'5年'],[3,'3年']],'win');
+    seg('erp-win',[[10,'10年'],[5,'5年'],[3,'3年'],[0,'2015以来']],'win');
     renderStrip();
     if(window.__renderERPChart)window.__renderERPChart();
   }
@@ -555,14 +571,20 @@ var FUTPRODS=['沪深300','上证50','中证500','中证1000'];
       const t=(DATA.futTab||{})[nm];
       if(!t) return;
       t.rows.forEach((row,i)=>{
-        const pos=row.rate>=0;
+        const pos=row.rate>=0, cls=pos?'up':'down', ann=row.ann;
+        const bar=ann==null?'':'<span class="fbar"><i style="width:'+
+          Math.min(100,Math.abs(ann)/12*100).toFixed(1)+'%;background:'+(pos?'#c0392b':'#1e8e5a')+'"></i></span>';
         const tr=document.createElement('tr');
-        tr.innerHTML='<td class="l">'+(i===0?'<span class="idx">'+nm+'</span>':'')+'</td>'+
-          '<td>'+row.code+'</td>'+
+        if(i) tr.className='gsub';
+        tr.innerHTML=
+          (i===0?'<td class="fut-name" rowspan="'+t.rows.length+'"><b>'+nm+
+                 '</b><span>现货 '+fmt(t.spot,1)+'</span></td>':'')+
+          '<td class="l"><span class="tenor'+(row.label==='当月'?' cur':'')+'">'+row.label+'</span></td>'+
+          '<td class="l code">'+row.code+'</td>'+
           '<td>'+fmt(row.fut,1)+'</td>'+
-          '<td class="'+(pos?'up':'down')+'">'+(row.basis>0?'+':'')+fmt(row.basis,1)+'</td>'+
-          '<td class="'+(pos?'up':'down')+'">'+(pos?'+':'')+fmt(row.rate,2)+'%</td>'+
-          '<td class="'+(pos?'up':'down')+'">'+(row.ann==null?'—':((row.ann>0?'+':'')+fmt(row.ann,1)+'%'))+'</td>'+
+          '<td class="'+cls+'">'+(row.basis>0?'+':'')+fmt(row.basis,1)+'</td>'+
+          '<td class="'+cls+'">'+(pos?'+':'')+fmt(row.rate,2)+'%</td>'+
+          '<td class="'+cls+'">'+(ann==null?'—':((ann>0?'+':'')+fmt(ann,1)+'%'))+bar+'</td>'+
           '<td class="dim">'+row.ddays+' 天</td>';
         tb.appendChild(tr);
       });
