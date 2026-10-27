@@ -541,8 +541,6 @@ var FUT_UI={idx:'沪深300',win:125};   // win 125/375/0 点数，0=全部
 var FUTPRODS=['沪深300','上证50','中证500','中证1000'];
 (function(){
   if(!DATA.futAll) return;
-  document.getElementById('fut-asof').textContent=(DATA.futTab||{})[FUT_UI.idx]?
-    (DATA.futTab[FUT_UI.idx].date+'（现货 '+fmt(DATA.futTab[FUT_UI.idx].spot,1)+'）'):DATA.asof;
   function seg(id,items,key){
     document.getElementById(id).innerHTML=items.map(it=>
       '<button data-v="'+it[0]+'"'+(String(FUT_UI[key])===String(it[0])?' class="on"':'')+'>'+it[1]+'</button>').join('');
@@ -577,8 +575,13 @@ var FUTPRODS=['沪深300','上证50','中证500','中证1000'];
   function renderFutAll(){
     seg('fut-idx',FUTPRODS.map(n=>[n,n]),'idx');
     seg('fut-win',[['125','近一年'],['375','近三年'],['0','全部']],'win');
-    document.getElementById('fut-asof').textContent=(DATA.futTab||{})[FUT_UI.idx]?
-      (DATA.futTab[FUT_UI.idx].date+'（现货 '+fmt(DATA.futTab[FUT_UI.idx].spot,1)+'）'):DATA.asof;
+    const t=(DATA.futTab||{})[FUT_UI.idx];
+    const el=document.getElementById('fut-asof');
+    if(t){
+      const lag=String(t.date).replace(/-/g,'')<String(DATA.asof).replace(/-/g,'');
+      el.innerHTML=t.date+'（现货 '+fmt(t.spot,1)+'）'+
+        (lag?' <span style="color:#c0392b;font-weight:600;">⚠ 滞后（报告日 '+DATA.asof+'）</span>':'');
+    }else{el.textContent=DATA.asof;}
     renderTable();
     if(window.__renderFutChart)window.__renderFutChart();
   }
@@ -635,12 +638,20 @@ function renderCharts(){
           lineStyle:{width:b[0]==='均值'?1.5:1.1,color:b[2],type:b[3]},itemStyle:{color:b[2]}})))
     },true);
     document.getElementById('band-stat').innerHTML=
+      bandLag(d, xs)+
       '窗口均值 <b>'+fmt(mean,2)+'</b> · ±1σ ['+fmt(mean-sd,2)+', '+fmt(mean+sd,2)+'] · 当前 <b>'+fmt(cur,2)+'</b>（均值'+(relPct>=0?'+':'')+fmt(relPct,1)+'%）';
     document.getElementById('band-note').innerHTML=fallback+
       '统计窗口：'+since+'（'+xs[0]+' 起，'+n+' 周）。通道 = 窗口内 '+lbl+' 的均值 ±1σ/±2σ × 当期 '+
       (met==='pe'?'EPS(TTM)（＝收盘价/PE，随盈利披露逐周变化）':'BPS（＝收盘价/PB）')+
       '，故通道随时间倾斜；收盘价上穿 +2σ 线即处于统计高位、下破 −2σ 线为统计低位。'+
-      '收盘价来源：2015~2019 由 Tushare 指数日线一次性回填（2026-10-21，仅此一次），其后东财增量。';
+      '收盘价来源：2015~2019 由 Tushare 指数日线一次性回填（2026-10-21，仅此一次），其后东财增量（失败自动降级新浪）。';
+  }
+  /* 滞后标记：收盘价最后一日早于报告 asof 时，明确标出"数据截至"，绝不冒充当日值 */
+  function bandLag(d, xs){
+    if(!xs.length||!DATA.asof) return '';
+    const last=String(xs[xs.length-1]).replace(/-/g,''), asof=String(DATA.asof).replace(/-/g,'');
+    if(!(last<asof)) return '';
+    return '<span style="color:#c0392b;font-weight:600;">⚠ 收盘价数据截至 '+xs[xs.length-1]+'（滞后）</span> · ';
   }
   function relPctAt(v,mean){const p=(v/mean-1)*100;return (p>=0?'+':'')+fmt(p,1)+'%';}
   renderBand();
