@@ -52,10 +52,19 @@
   .summary .lead p{margin:0 0 9px;color:var(--ink2);}
   .summary .lead .hl{color:var(--primary);font-weight:700;}
   .kpi{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;flex:1 1 520px;min-width:300px;}
-  .kpi .k{background:linear-gradient(180deg,#fafbfd,#f4f6fa);border:1px solid var(--line2);border-radius:8px;padding:10px 11px;}
-  .kpi .k .kl{font-size:11px;color:var(--muted);white-space:nowrap;}
-  .kpi .k .kv{font-size:18px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;}
-  .kpi .k .kv small{font-size:11px;font-weight:700;margin-left:3px;}
+  .kpi .k{background:linear-gradient(180deg,#fafbfd,#f4f6fa);border:1px solid var(--line2);
+    border-radius:8px;padding:10px 12px;transition:box-shadow .18s,border-color .18s;}
+  .kpi .k:hover{box-shadow:0 3px 10px rgba(23,63,116,.09);border-color:#cfdcee;}
+  .kpi .k .ktop{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    margin-bottom:7px;}
+  .kpi .k .kname{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.2px;}
+  .kpi .k .kclose{font-size:17px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;}
+  .kpi .k .krow{display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;}
+  .kpi .k .kk{flex:none;width:24px;color:var(--faint);font-size:10.5px;}
+  .kpi .k .kb{flex:1;height:5px;border-radius:3px;background:#e8edf4;overflow:hidden;}
+  .kpi .k .kb i{display:block;height:100%;border-radius:3px;}
+  .kpi .k .krow b{flex:none;min-width:40px;text-align:right;font-variant-numeric:tabular-nums;
+    font-size:11.5px;font-weight:700;}
 
   /* tables */
   .tblwrap{overflow-x:auto;border-radius:10px;}
@@ -151,7 +160,7 @@
     <span class="tagline">INDEX VALUATION &amp; MULTI-DIMENSION TRACKER</span>
     <h1>宽基指数 · 多维度分析图</h1>
     <div class="sub">
-      <span class="idxlist">沪深300 · 上证50 · 中证500 · 创业板指 · 科创50</span>
+      <span class="idxlist">上证50 · 沪深300 · 中证500 · 创业板指 · 科创50</span>
       <span class="asof">数据日期：<b id="asof">—</b>（收盘）</span>
     </div>
   </div>
@@ -346,10 +355,18 @@ const NAMES=DATA.rows.map(r=>r.name);
 /* ---------- KPI ---------- */
 (function(){
   const box=document.getElementById('kpi');
+  const bar=(p)=>{const c=pcol(p);return '<span class="kb"><i style="width:'+
+    Math.max(2,Math.min(100,p))+'%;background:'+c+'"></i></span>'+
+    '<b style="color:'+c+'">'+fmt(p,1)+'%</b>';};
   DATA.rows.forEach(r=>{
     const el=document.createElement('div');el.className='k';
-    el.innerHTML='<div class="kl">'+r.name+' · PE分位</div>'+
-      '<div class="kv">'+fmt(r.pe_pct,1)+'%<small style="color:'+DIMC[r.stc]+'">'+r.st+'</small></div>';
+    el.innerHTML=
+      '<div class="ktop"><span class="kname">'+r.name+'</span>'+
+        '<b class="kclose">'+fmt(r.close,0)+'</b></div>'+
+      '<div class="krow"><span class="kk">PE</span>'+
+        (r.pe_pct==null?'<b style="color:var(--muted)">—</b>':bar(r.pe_pct))+'</div>'+
+      '<div class="krow"><span class="kk">点位</span>'+
+        (r.close_pct==null?'<b style="color:var(--muted)">—</b>':bar(r.close_pct))+'</div>';
     box.appendChild(el);
   });
 })();
