@@ -34,11 +34,16 @@ SPOT_SECID = "1.000852"          # 中证1000 现货（东财）
 SPOT_BEG = "20220101"            # IM 上市前留足余量
 KEEP_DAYS = 3                    # 最近 N 天允许覆盖（当日值可能晚间修正）
 SLEEP = 0.25                     # 新浪逐合约拉取间隔（seed 模式约 5 分钟）
+TIMEOUT = 8                      # 单请求超时：正常 <1s，8s 已远超；原 20s×25 请求=8 分钟
+BREAK_AFTER = 3                  # 连续 N 个请求失败即熔断（网络整体异常时别再耗满超时）
 
 KLINE_URL = ("https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20t=/"
              "InnerFuturesNewService.getDailyKLine")
 SINA_H = {"Referer": "https://finance.sina.com.cn"}
 EM_URL = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
+# 备用现货源（push2his 在本机沙箱代理下被直接拒绝，2026-10-27 起加降级）
+SINA_SPOT_URL = ("https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+                 "CN_MarketData.getKLineData")
 EM_H = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "Chrome/120.0.0.0 Safari/537.36",
         "Referer": "https://quote.eastmoney.com/"}
@@ -68,18 +73,24 @@ def contract_ym(d):
 def listed_contracts(d):
     """当前全部存续合约月份（YYYYMM 列表，当月/次月/当季/下季）。
 
-    中金所挂牌规则：当月、次月及随后两个季月（3/6/9/12）。
+    中金所挂牌规则：当月、次月 + 随后两个季月（3/6/9/12）。
     d 晚于当月第三个周五时，当月已经交割、顺延到次月。
+
+    注意：季月游标必须独立逐月推进——曾用 `out[-1]` 当游标，遇 12 月后
+    下一个月是次年 1 月（非季月）不 append，游标不前进 → 死循环，
+    2026-10-27 06:00 定时任务的"挂起 12 分钟"即此。
     """
-    y, m = (d.year, d.month)
+    y, m = d.year, d.month
     if d > third_friday(y, m):
         y, m = (y + (m == 12), 1 if m == 12 else m + 1)
-    out = [(y, m), (y + (m == 12), 1 if m == 12 else m + 1)]
-    while len(out) < 4:                       # 补足两个季月
-        y2, m2 = out[-1]
-        y2, m2 = (y2 + (m2 == 12), 1 if m2 == 12 else m2 + 1)
-        if m2 % 3 == 0:
-            out.append((y2, m2))
+    out = [(y, m), (y + (m == 12), 1 if m == 12 else m + 1)]   # 当月、次月
+    cy, cm = out[-1]                                           # 独立游标
+    guard = 0
+    while len(out) < 4 and guard < 36:
+        guard += 1
+        cy, cm = (cy + (cm == 12), 1 if cm == 12 else cm + 1)
+        if cm % 3 == 0:
+            out.append((cy, cm))
     return ["%04d%02d" % t for t in out[:4]]
 
 
@@ -127,14 +138,55 @@ def _merge(blob, key, pairs):
 
 
 # ---------- 取数 ----------
+_SESS = None
+
+
+def _sess():
+    """普通 Session（跟随 env 代理 = 沙箱出口代理）。
+
+    **不要置 trust_env=False**：本机 HTTP(S)_PROXY 是沙箱注入的出口代理（端口每会话可能
+    变，2026-10-26=7864、10-27=12164），「直连」与「走代理」是同一出口路径；实测置 False
+    后请求会卡在解析/连接层（超时参数管不到 DNS），2 分钟零输出。
+    可靠性靠 TIMEOUT + BREAK_AFTER 熔断，而不是绕代理。
+    """
+    global _SESS
+    if _SESS is None:
+        import requests
+        _SESS = requests.Session()
+    return _SESS
+
+
+_FAILS = [0]                # 连续失败计数（跨品种累计，进程内）
+
+
 def _fetch_contract(sym):
-    """新浪单合约日 K（上市以来全历史）。返回 [(iso, close)]，空合约返回 []。"""
-    import requests
-    r = requests.get(KLINE_URL, params={"symbol": sym}, headers=SINA_H, timeout=20)
+    """新浪单合约日 K（上市以来全历史）。返回 [(iso, close)]，空合约返回 []。
+
+    连续 BREAK_AFTER 次失败后抛 _Breaker，调用方中止本环节并保留原缓存。
+    """
+    r = _sess().get(KLINE_URL, params={"symbol": sym}, headers=SINA_H, timeout=TIMEOUT)
     txt = r.text
     body = txt[txt.find("(") + 1:txt.rfind(")")]
     data = json.loads(body)
+    _FAILS[0] = 0
     return [(x["d"], float(x["c"])) for x in (data or [])]
+
+
+class _Breaker(Exception):
+    """网络整体异常：已连续多次失败，中止本环节（非致命，保留缓存）。"""
+
+
+def _try(sym):
+    """带熔断的取数：失败累计到 BREAK_AFTER 即中止，避免逐请求耗满超时。"""
+    try:
+        return _fetch_contract(sym)
+    except Exception as e:                                # noqa: BLE001
+        _FAILS[0] += 1
+        print("  !! [futures] %s 取数失败（连续 %d）：%s %s"
+              % (sym, _FAILS[0], type(e).__name__, str(e)[:100]))
+        if _FAILS[0] >= BREAK_AFTER:
+            raise _Breaker("连续 %d 个请求失败，本环节中止" % _FAILS[0])
+        return []
 
 
 def sync_futures(blob, seed=False):
@@ -143,6 +195,7 @@ def sync_futures(blob, seed=False):
     # 次月合约也要拉：交割日次一交易日起当月=次月（否则序列停在交割日）
     cur_ym = next_ym("%04d%02d" % (today.year, today.month))
     listed = listed_contracts(today)          # 当月/次月/当季/下季（CUR 表用）
+    curs = blob.setdefault("CUR", {})         # CUR[prod][sym] = {date: close}
     for prod in PROD:
         existing = blob.get(prod, {})
         if seed or not existing:
@@ -157,32 +210,30 @@ def sync_futures(blob, seed=False):
         bars_cache = {}
         for ym in months:
             sym = prod + ym[2:]
-            try:
-                bars = _fetch_contract(sym)
-            except Exception as e:                        # noqa: BLE001
-                print("  !! [futures] %s 取数失败：%s %s"
-                      % (sym, type(e).__name__, str(e)[:100]))
-                bars = []
+            bars = _try(sym)
             bars_cache[sym] = bars
             # 只收属于「当月」的交易日（拼接规则：t 的当月合约 = contract_ym(t)）
             pairs = [(d, c) for d, c in bars
                      if contract_ym(datetime.date.fromisoformat(d)) == ym]
             added += _merge(blob, prod, pairs)
             time.sleep(SLEEP)
-        # CUR：全部存续合约的日收盘（读数表用；与当月连续日期对齐取值）
-        cur = blob.setdefault("CUR", {}).setdefault(prod, {})
-        for sym in [prod + ym[2:] for ym in listed]:
+        # CUR：全部存续合约的日收盘（读数表用）——按合约分开存：
+        #   CUR[prod][sym] = {iso_date: close}
+        # 曾误用 _merge 把各合约混成一个 {date: close} 扁平字典，
+        # 导致 gen2 取 _fser.get(_fd) 时 _fser 是 float（AttributeError）。
+        cur = {}
+        for ym in listed:
+            sym = prod + ym[2:]
             pairs = bars_cache.get(sym)
             if pairs is None:                             # 季月不在上面循环里时补拉
-                try:
-                    pairs = _fetch_contract(sym)
-                except Exception as e:                    # noqa: BLE001
-                    print("  !! [futures] %s 取数失败：%s %s"
-                          % (sym, type(e).__name__, str(e)[:100]))
-                    pairs = []
+                pairs = _try(sym)
                 time.sleep(SLEEP)
-            _merge(blob, "CUR." + prod, [(d, c) for d, c in pairs])
-        blob["CUR"][prod] = blob.pop("CUR." + prod)
+            d = {}
+            for dd, c in pairs:
+                if dd and c is not None and c == c:
+                    d[dd] = round(float(c), 2)
+            cur[sym] = {k: d[k] for k in sorted(d)}
+        curs[prod] = cur
         ks = sorted(blob[prod])
         print("  [futures] %s → %s ~ %s（%d 日，本次新补 %d；存续 %s）"
               % (prod, ks[0] if ks else "-", ks[-1] if ks else "-",
@@ -200,31 +251,43 @@ def sync_futures(blob, seed=False):
 
 
 def sync_spot852(blob):
-    """中证1000 现货（东财 K 线）：增量或首次全量。"""
-    import requests
+    """中证1000 现货：东财 K 线为主，失败降级新浪（push2his 在本机沙箱代理下被拒）。"""
     dst = blob.setdefault("SPOT852", {})
     last = max(dst) if dst else ""
     beg = (datetime.date.fromisoformat(last)
            - datetime.timedelta(days=7)).strftime("%Y%m%d") if last else SPOT_BEG
+    pairs, src = [], "em"
     try:
-        r = requests.get(EM_URL, params={
+        r = _sess().get(EM_URL, params={
             "secid": SPOT_SECID, "fields1": "f1,f2,f3", "fields2": "f51,f53",
             "klt": "101", "fqt": "0", "beg": beg, "end": "20500101",
-        }, headers=EM_H, timeout=40)
+        }, headers=EM_H, timeout=TIMEOUT)
         kl = ((r.json() or {}).get("data") or {}).get("klines") or []
+        for line in kl:
+            p = line.split(",")
+            if len(p) >= 2:
+                pairs.append((p[0], p[1]))
     except Exception as e:                                # noqa: BLE001
-        print("  !! [futures] 中证1000 现货取数失败（保留原缓存）：%s %s"
-              % (type(e).__name__, str(e)[:120]))
-        return
-    pairs = []
-    for line in kl:
-        p = line.split(",")
-        if len(p) >= 2:
-            pairs.append((p[0], p[1]))
+        print("  .. [futures] 东财现货源不可用，改走新浪：%s %s"
+              % (type(e).__name__, str(e)[:80]))
+    if not pairs:
+        try:
+            r = _sess().get(SINA_SPOT_URL, params={
+                "symbol": "sh000852", "scale": "240", "ma": "no", "datalen": "5000",
+            }, headers=SINA_H, timeout=TIMEOUT)
+            data = json.loads(r.text)
+            floor = "%s-%s-%s" % (SPOT_BEG[:4], SPOT_BEG[4:6], SPOT_BEG[6:])
+            pairs = [(x["day"], x["close"]) for x in data
+                     if x.get("day") and x.get("close") and x["day"] >= floor]
+            src = "sina"
+        except Exception as e:                            # noqa: BLE001
+            print("  !! [futures] 中证1000 现货两源均失败（保留原缓存）：%s %s"
+                  % (type(e).__name__, str(e)[:110]))
+            return
     added = _merge(blob, "SPOT852", pairs)
     ks = sorted(blob["SPOT852"])
-    print("  [futures] SPOT852（中证1000）+%d → %s ~ %s（%d 日）"
-          % (added, ks[0] if ks else "-", ks[-1] if ks else "-", len(ks)))
+    print("  [futures] SPOT852（中证1000,%s）+%d → %s ~ %s（%d 日）"
+          % (src, added, ks[0] if ks else "-", ks[-1] if ks else "-", len(ks)))
 
 
 def main():
@@ -233,8 +296,11 @@ def main():
     if seed:
         blob = {}                                        # 重建模式：推倒重来
         print("  [futures] seed 模式：逐月拉取历史合约（约 3~5 分钟）...")
-    sync_futures(blob, seed=seed)
-    sync_spot852(blob)
+    try:
+        sync_futures(blob, seed=seed)
+        sync_spot852(blob)
+    except _Breaker as e:
+        print("  !! futures 熔断：%s（保留原缓存，稍后运行自动补齐）" % e)
     _save(blob)
     print("  futures 完成：%s" % PATH)
 

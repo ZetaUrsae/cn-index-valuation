@@ -30,7 +30,7 @@ Tushare 只在人工指令（`sync_tushare.py`，或显式设 `IV_ALLOW_TUSHARE=
 | `etf_share` ETF 份额 | `exchange_etf_share`(沪) / `szse_etf_share`(深快照) → `szse_etf_share_range`(深区间) → `tushare_etf_share` | 上交所官方 + 深交所快照/区间 | 2023-01（本地） | 否 |
 | `etf_quote` ETF 行情 | `sina_quote` → `tushare_etf_quote` | 新浪 | — | 否 |
 | `bond10y` 10Y 国债 | `em_bond10y`（唯一源；`manual_bond10y` 已于 v2.4.0 删除） | 东财（中债数据） | 2002-01-04 | 否 |
-| `close_hist` 指数收盘价（Band 图专用） | `fetch_close_hist.py`：东财 K 线 `push2his`（日常增量）；2015~2019 为 Tushare `index_daily` **一次性回填（2026-10-21，仅此一次）** | 东财 K 线 | 2015-01-05（科创50 自基日） | 已回填段是；此后否 |
+| `close_hist` 指数收盘价（Band 图专用） | `fetch_close_hist.py`：东财 K 线 `push2his`（日常增量）→ **失败自动降级新浪指数日 K**（v2.6.6）；2015~2019 为 Tushare `index_daily` **一次性回填（2026-10-21，仅此一次）** | 东财 K 线 / 新浪（备） | 2015-01-05（科创50 自基日） | 已回填段是；此后否 |
 | `futures` 股指期货当月连续 + 中证1000 现货 | `fetch_futures.py`（v2.6.5，run_daily 补步骤，非致命；`--seed` 一次性全量 2026-10-26 已完成） | 新浪合约日 K 线拼接 + 东财 K 线（现货） | 2018-10-22（IM 2022-07-22；现货 2022-01-04） | 否 |
 | `calendar` 交易日历 | `sse_calendar` → `local_calendar` | 上交所 | — | 否 |
 
@@ -565,7 +565,10 @@ python tools/verify_sources.py --csv
   （当月/次月/随后两个季月，中金所规则）日收盘 → `futures_kline.json` 的 `CUR` 键，
   供读数表逐合约取值；到期日 = 合约月份的第三个周五。
 - **现货**：沪深300/上证50/中证500 复用 `data/close_history.json`（与 Band 同源）；
-  中证1000 为 `futures_kline.json` 内 `SPOT852`（东财 K 线，2022-01 起）。
+  中证1000 为 `futures_kline.json` 内 `SPOT852`（东财 K 线为主，失败降级新浪 `sh000852`；
+  2022-01 起）。
+- **读数表数据（`CUR`）**：`CUR[品种][合约] = {date: close}`，四只存续合约分开存
+  （v2.6.6 修正：此前误存为混在一起的 `{date: close}`，gen2 取值时报 AttributeError）。
 - **历史下界**：IF/IH/IC 自 **2019-03**（新浪合约 K 线可查下界 2018-10，
   仅季月有更早数据）、IM 自 **2022-07-22**（上市日）。新浪 `IF0` 等连续代码是
   **主力连续**（按持仓量移仓），与当月连续口径不同，**未采用**。

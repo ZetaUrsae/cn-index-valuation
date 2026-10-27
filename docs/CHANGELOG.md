@@ -5,6 +5,34 @@
 
 ---
 
+## [v2.6.6] — 2026-10-27
+
+主题：**修复 06:00 定时任务失败三连**（死循环挂起 / CUR 结构错 / push2his 被拒）。
+
+### Fixed
+- **`fetch_futures.listed_contracts` 死循环**（本次"挂起 12 分钟"的真凶）：原来用
+  `out[-1]` 当季月游标，当 out[-1] 是 12 月时下一个月是次年 1 月（非季月）不 append，
+  游标不前进 → 无限空转、一行日志都不输出，进程被外壳杀掉，看起来像"网络挂起"。
+  改为独立游标逐月推进 + `guard` 上限；实测 2026-10-27 → 2611/2612/2703/2706 正确。
+- **`CUR` 数据结构错**：原用 `_merge` 把四个存续合约混成一个 `{date: close}` 扁平字典，
+  `gen2` 取 `_fser.get(_fd)` 时 **`_fser` 是 float** → `AttributeError`，报告生成失败。
+  改为 `CUR[prod][sym] = {date: close}`（按合约分开），并在 `_load` 后 `setdefault("CUR")`。
+- **`push2his.eastmoney.com` 在本机被直接拒绝**（0.1s ProxyError，两个子域皆同；
+  时好时坏，2026-10-27 06:00 表现为 `RemoteDisconnected`）：`fetch_close_hist.py`
+  与 `fetch_futures.sync_spot852` 均改为 **东财为主、新浪指数日 K 降级**
+  （`money.finance.sina.com.cn/.../CN_MarketData.getKLineData`，一次可取 5000 根）。
+  降级时按 `HIST_FLOOR`(2015-01-05) / `SPOT_BEG`(2022-01-01) 截断，避免灌进 2006 年起的老数据。
+
+### Changed
+- `fetch_futures` 超时 20s → **8s**、新增**连续 3 次失败熔断**（`_try` + `_Breaker`）；
+  `fetch_close_hist` 超时 40s → **10s**、连续 2 次失败终止。原因：25 个请求 × 20s 串行
+  无熔断 = 最坏 8 分钟，一次网络抖动就能拖垮整条日报。
+- **不改 `trust_env`（仍走 env 里的沙箱出口代理）**：实测置 `False` 后请求会卡在
+  解析/连接层（超时参数管不到 DNS），2 分钟零输出——"直连"与"走代理"是同一出口路径，
+  绕开代理没有任何收益。
+
+---
+
 ## [v2.6.5] — 2026-10-26
 
 主题：**情绪面新增「股指期货当月基差」（IH/IF/IC/IM 升贴水，PCR 之后）；机构展望移入第五章节**。

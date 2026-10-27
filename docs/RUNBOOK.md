@@ -311,6 +311,21 @@ ks=sorted(d); print('末5:', [(k,d[k]) for k in ks[-5:]])
 若被拒且提示"不要再重试"，**跳过该域**，靠其他 provider 降级完成，
 不要构造等价替代请求。
 
+### 5.9 `close_hist` / 中证1000 现货取不到（push2his 被拒）
+
+**现象**：日志出现 `东财源不可用，改走新浪：ProxyError ... push2his.eastmoney.com`
+（或 `RemoteDisconnected`），随后 `[close_hist] xxx.SH(sina) +N → ...`。
+**这是正常的自动降级，不用处理**——v2.6.6 起 `fetch_close_hist.py` 与
+`fetch_futures.sync_spot852` 都已接新浪指数日 K 兜底，取到的收盘价与东财一致。
+
+只有当**两个源同时失败**、并打出「连续 2 次失败，中止本环节」时才需要人工看：
+先手工跑 `$PY scripts/fetch_close_hist.py` 确认，再查 RUNBOOK 5.8。
+
+⚠️ 判断"是不是网络问题"之前，先确认脚本**有没有输出**：
+若某环节连续几分钟**一行日志都没有**，多半是代码死循环（v2.6.6 就踩过：
+`listed_contracts` 季月游标不前进导致空转，被误判为"新浪挂起"），
+用 `python -u 脚本.py` 前台跑几十秒即可区分——死循环=零输出，网络问题=有失败日志。
+
 ---
 
 ## 六、验收清单（改动后必须过）
