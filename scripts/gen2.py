@@ -243,6 +243,20 @@ _fut_days = _tail2(_fut_days)                     # 每 2 日抽 1 点、锚定�
 futAll = {"dates": [int(x.replace("-", "")[2:]) for x in _fut_days], "series": {}}
 futTab = {}
 _CUR_LBL = ["当月", "次月", "当季", "下季"]
+
+
+def _tenor(i, sym):
+    """期限标签：前两只是当月/次月（按位置），后两只按**合约交割月**标「季月+月份」。
+
+    不能沿用「当季/下季」：中金所规则是「当月、次月 + 随后两个季月」，当**次月本身就是
+    季月**时（如 2026-10 的交割后，次月 2612 即 12 月季月），第三、四只其实是再往后两个
+    季月（2703/2706），叫「当季」会误导。因此后两只统一「季月03」「季月06」。
+    """
+    if i == 0:
+        return "当月"
+    if i == 1:
+        return "次月"
+    return "季月" + sym[4:6]
 for _prod, _nm in FUTPROD:
     _fmp = FUTBLOB.get(_prod, {})
     _smp = (FUTBLOB.get("SPOT852", {}) if _prod == "IM"
@@ -275,7 +289,7 @@ for _prod, _nm in FUTPROD:
         _fexp = _third_friday(2000 + _fyy, _fmm)
         _fdd = (_fexp - _dt.date.fromisoformat(_fd)).days
         _frate = round((_fv / _fspot - 1) * 100, 3)
-        _frows.append({"label": _CUR_LBL[_fi], "code": _fsym, "fut": _fv,
+        _frows.append({"label": _tenor(_fi, _fsym), "code": _fsym, "fut": _fv,
                        "basis": round(_fv - _fspot, 1), "rate": _frate,
                        "ann": round(_frate * 365 / _fdd, 2) if _fdd > 0 else None,
                        "ddays": _fdd})

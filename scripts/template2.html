@@ -63,9 +63,11 @@
   thead th{background:linear-gradient(180deg,#16345f,#12294b);color:#eaf1fb;font-weight:600;
     padding:10px 12px;text-align:right;white-space:nowrap;font-size:12.3px;border-bottom:1px solid #0d2140;}
   thead th.l{text-align:left;}
+  thead th.c{text-align:center;}
   thead tr.sub th{background:#1d4172;font-size:11px;color:#bcd0ea;padding:6px 12px;font-weight:500;}
   tbody td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line2);white-space:nowrap;color:var(--ink2);font-size:13px;}
   tbody td.l{text-align:left;}
+  tbody td.c{text-align:center;}
   tbody tr:hover td{background:#f7faff;}
   tbody tr:last-child td{border-bottom:none;}
   .idx{font-weight:700;color:var(--ink);font-size:13.5px;}
@@ -97,10 +99,11 @@
     border-left:3px solid #173f74;}
   #tb-fut .fut-name b{display:block;font-size:13px;color:#20334c;}
   #tb-fut .fut-name span{display:block;margin-top:2px;font-size:10.5px;color:#8494a8;font-weight:400;}
-  #tb-fut .tenor{display:inline-block;min-width:30px;padding:1px 7px;border-radius:9px;
+  #tb-fut .tenor{display:inline-block;min-width:42px;padding:1px 7px;border-radius:9px;
     background:#eef3fa;color:#3f5878;font-size:10.5px;line-height:1.5;text-align:center;}
   #tb-fut .tenor.cur{background:#173f74;color:#fff;}
   #tb-fut .code{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#40506b;}
+  #tb-fut td.deep{font-weight:700;}
   #tb-fut .fbar{display:inline-block;width:44px;height:5px;border-radius:3px;background:#eef1f5;
     margin-left:8px;vertical-align:middle;overflow:hidden;}
   #tb-fut .fbar i{display:block;height:100%;border-radius:3px;}
@@ -261,7 +264,7 @@
     <div class="c-title" style="font-size:13px;margin-top:14px;">全存续合约贴水（<span id="fut-asof">—</span>）</div>
     <div class="tblwrap" style="margin-top:9px;"><table>
       <thead><tr>
-        <th class="l">品种 / 现货</th><th class="l">期限</th><th class="l">合约</th><th>期货收盘</th>
+        <th class="l">品种 / 现货</th><th class="c">期限</th><th class="c">合约</th><th>期货收盘</th>
         <th>基差<span style="font-weight:400;font-size:10px;">(点)</span></th>
         <th>基差率</th><th>年化基差率</th><th>距交割</th>
       </tr></thead>
@@ -572,19 +575,21 @@ var FUTPRODS=['沪深300','上证50','中证500','中证1000'];
       if(!t) return;
       t.rows.forEach((row,i)=>{
         const pos=row.rate>=0, cls=pos?'up':'down', ann=row.ann;
+        // 条形满格 20%（原 12% 会把 IH 一类深贴水顶格、失去区分度）；≥15% 数值加粗提示
         const bar=ann==null?'':'<span class="fbar"><i style="width:'+
-          Math.min(100,Math.abs(ann)/12*100).toFixed(1)+'%;background:'+(pos?'#c0392b':'#1e8e5a')+'"></i></span>';
+          Math.min(100,Math.abs(ann)/20*100).toFixed(1)+'%;background:'+(pos?'#c0392b':'#1e8e5a')+'"></i></span>';
+        const deep=(ann!=null&&Math.abs(ann)>=15)?' deep':'';
         const tr=document.createElement('tr');
         if(i) tr.className='gsub';
         tr.innerHTML=
           (i===0?'<td class="fut-name" rowspan="'+t.rows.length+'"><b>'+nm+
                  '</b><span>现货 '+fmt(t.spot,1)+'</span></td>':'')+
-          '<td class="l"><span class="tenor'+(row.label==='当月'?' cur':'')+'">'+row.label+'</span></td>'+
-          '<td class="l code">'+row.code+'</td>'+
+          '<td class="c"><span class="tenor'+(row.label==='当月'?' cur':'')+'">'+row.label+'</span></td>'+
+          '<td class="c code">'+row.code+'</td>'+
           '<td>'+fmt(row.fut,1)+'</td>'+
           '<td class="'+cls+'">'+(row.basis>0?'+':'')+fmt(row.basis,1)+'</td>'+
           '<td class="'+cls+'">'+(pos?'+':'')+fmt(row.rate,2)+'%</td>'+
-          '<td class="'+cls+'">'+(ann==null?'—':((ann>0?'+':'')+fmt(ann,1)+'%'))+bar+'</td>'+
+          '<td class="'+cls+deep+'">'+(ann==null?'—':((ann>0?'+':'')+fmt(ann,1)+'%'))+bar+'</td>'+
           '<td class="dim">'+row.ddays+' 天</td>';
         tb.appendChild(tr);
       });
