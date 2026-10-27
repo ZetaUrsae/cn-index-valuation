@@ -266,7 +266,7 @@
       <thead><tr>
         <th class="l">品种 / 现货</th><th class="c">期限</th><th class="c">合约</th><th>期货收盘</th>
         <th>基差<span style="font-weight:400;font-size:10px;">(点)</span></th>
-        <th>基差率</th><th>年化基差率<span id="fut-scale" style="display:block;font-weight:400;font-size:10px;color:#bcd0ea;"></span></th><th>距交割</th>
+        <th>基差率</th><th>年化基差率</th><th>距交割</th>
       </tr></thead>
       <tbody id="tb-fut"></tbody>
     </table></div>
@@ -580,8 +580,6 @@ var FUTPRODS=['沪深300','上证50','中证500','中证1000'];
     // （直接拿 max 当满格会让最深那只永远顶格、失去纵向可比；下限避免平静日把小值放大）
     const mx=all.reduce((m,x)=>Math.max(m,Math.abs(x.ann)),0);
     const scale=Math.max(8,Math.ceil(mx));
-    const se=document.getElementById('fut-scale');
-    if(se) se.textContent='满格 '+scale+'%';
     groups.forEach(([nm,t])=>{
       t.rows.forEach((row,i)=>{
         const pos=row.rate>=0, cls=pos?'up':'down', ann=row.ann;
