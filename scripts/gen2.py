@@ -157,6 +157,8 @@ for name in ORDER:
         "close": m["close"], "pe_ttm": m["pe_ttm"], "pe": m["pe"], "pb": m["pb"],
         "pe_pct": m["pe_ttm_pct_10y"], "pb_pct": m["pb_pct_10y"],
         "close_pct": m.get("close_pct_10y"),
+        # 近5年分位：仅 KPI 卡使用，与表内近10年列形成对照（v2.6.8）
+        "pe_pct5": m.get("pe_ttm_pct_5y"), "close_pct5": m.get("close_pct_5y"),
         "close_med": m.get("close_med_10y"), "close_med5": m.get("close_med_5y"),
         "hist_from": m["hist_start"][:4],
         "mv": m["total_mv"] / 1e12, "roe": m["implied_roe"],

@@ -63,6 +63,7 @@ for code, d in raw.items():
     close_from = min(d for d in _hist if _hist[d]) if _win else None
     _win5 = [v for d, v in sorted(_hist.items()) if d >= Y5_ISO and v]
     close_med5 = round(float(np.median(_win5)), 2) if _win5 else None
+    close_pct5 = pctile(_win5, close)          # 近5年点位分位（KPI 卡用，与表内 10 年形成对照）
 
     res = {
         "code": code, "name": name, "date": latest["trade_date"], "close": close,
@@ -76,6 +77,7 @@ for code, d in raw.items():
         "pe_ttm_pct_10y": pctile([r["pe_ttm"] for r in b10], latest["pe_ttm"]),
         "pb_pct_10y": pctile([r["pb"] for r in b10], latest["pb"]),
         "close_pct_10y": close_pct, "close_med_10y": close_med, "close_med_5y": close_med5,
+        "close_pct_5y": close_pct5,
         "close_pct_from": close_from,
         "hist_start": basic[0]["trade_date"], "hist_end": basic[-1]["trade_date"], "hist_n": len(basic),
         "pe_ttm_min": round(min([x for x in pe_ttm_series if x and x > 0]), 2),

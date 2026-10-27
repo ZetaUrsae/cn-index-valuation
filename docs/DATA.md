@@ -454,12 +454,15 @@ python tools/verify_sources.py --csv
 
 ### 0. 核心指标速览
 
-- **字段**：`rows[]` 里的 close / pe_ttm / pe(静态) / pb / pe_pct / pb_pct / st(估值状态标签)。
+- **字段**：`rows[]` 里的 close / pe_ttm / pe(静态) / pb / pe_pct / pb_pct / st(估值状态标签)，
+  外加 KPI 专用的 `pe_pct5` / `close_pct5`。
 - **中间文件**：`work/metrics.json`（键 = `000300.SH` 等 5 个 ts_code）。
 - **脚本**：`scripts/process.py`。
-- **计算链**：`data/raw.json` 的 `basic` 段（最新一行）+ `daily` 段。
+- **计算链**：`data/raw.json` 的 `basic` 段（最新一行）+ `daily` 段 + `data/close_history.json`。
 - **分位口径**：**近 10 年**日频 PE(TTM)/PB 的百分位（`pctile`，只用正值样本）；  
-  5 年分位也在 metrics.json 里（`pe_ttm_pct_5y`），报告表格当前用 10 年口径。
+  5 年分位也在 metrics.json 里（`pe_ttm_pct_5y` / `pb_pct_5y` / `close_pct_5y`）。
+  **v2.6.8 起 KPI 卡用近 5 年**（`pe_pct5` / `close_pct5`），与表内近 10 年列**刻意不同**，
+  形成短期位置 vs 长期位置的对照——卡上标注「PE 5年 / 点位 5年」，勿与表格 10 年口径混淆。
 - **来源**：`basic` 段 = 东财 `RPT_INDEX_COMPONENT`（成分股，缓存 7 天）
   - `RPT_VALUEANALYSIS_DET`（全市场估值，单次 pageSize=6000），  
     按 `PE=Σmv/Σ(mv/PE_i)`（总市值加权、含亏损股）聚合，与 Tushare 存值误差 0.17%。

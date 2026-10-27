@@ -60,7 +60,7 @@
   .kpi .k .kname{font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:.2px;}
   .kpi .k .kclose{font-size:12.5px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;}
   .kpi .k .krow{display:flex;align-items:center;gap:7px;margin-top:4px;font-size:11.5px;}
-  .kpi .k .kk{flex:none;width:24px;color:var(--faint);font-size:10.5px;}
+  .kpi .k .kk{flex:none;width:44px;color:var(--faint);font-size:10px;letter-spacing:.2px;}
   .kpi .k .kb{flex:1;height:5px;border-radius:3px;background:#e8edf4;overflow:hidden;}
   .kpi .k .kb i{display:block;height:100%;border-radius:3px;}
   .kpi .k .krow b{flex:none;min-width:40px;text-align:right;font-variant-numeric:tabular-nums;
@@ -363,10 +363,10 @@ const NAMES=DATA.rows.map(r=>r.name);
     el.innerHTML=
       '<div class="ktop"><span class="kname">'+r.name+'</span>'+
         '<b class="kclose">'+fmt(r.close,2)+'</b></div>'+
-      '<div class="krow"><span class="kk">PE</span>'+
-        (r.pe_pct==null?'<b style="color:var(--muted)">—</b>':bar(r.pe_pct))+'</div>'+
-      '<div class="krow"><span class="kk">点位</span>'+
-        (r.close_pct==null?'<b style="color:var(--muted)">—</b>':bar(r.close_pct))+'</div>';
+      '<div class="krow"><span class="kk">PE 5年</span>'+
+        (r.pe_pct5==null?'<b style="color:var(--muted)">—</b>':bar(r.pe_pct5))+'</div>'+
+      '<div class="krow"><span class="kk">点位 5年</span>'+
+        (r.close_pct5==null?'<b style="color:var(--muted)">—</b>':bar(r.close_pct5))+'</div>';
     box.appendChild(el);
   });
 })();
