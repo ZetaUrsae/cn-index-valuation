@@ -427,6 +427,13 @@ def _views():
 
     兼容旧格式 {指数: [观点, "机构（日期）"]}，只在文件被写回旧结构时兜底，
     正常路径下 manual_inputs.json 的 views 就是 list。
+
+    输出按发布日**从新到旧**排序，并附两个派生字段（v2.7.0）：
+      status —— 与上一版报告相比是「新增 / 更新 / 沿用」，由 work/views_snapshot.json
+                自动判定（不靠人工维护，避免旧标注被标成新状态）；
+      change —— 观点变化情况：status 为新增/更新时用人工写的 change（manual_inputs.json
+                可选字段）描述与同机构此前观点的差异；沿用则一律显示「与前版一致」，
+                这样人工写的对比文字不会在第二天过期之后还挂在页面上。
     """
     v = MAN.get("views", [])
     if isinstance(v, dict):
@@ -436,8 +443,84 @@ def _views():
             txt = seq[0] if seq else ""
             src = seq[1] if len(seq) > 1 else ""
             out.append({"org": src or "—", "date": "", "scope": scope, "view": txt})
-        return out
-    return [e for e in v if isinstance(e, dict) and (e.get("org") or e.get("view"))]
+        return _annotate_views(out)
+    out = [e for e in v if isinstance(e, dict) and (e.get("org") or e.get("view"))]
+    return _annotate_views(out)
+
+
+VIEWS_SNAP = BASE + "work/views_snapshot.json"
+
+
+def _cut(s, n=110):
+    s = (s or "").strip().replace("\n", " ")
+    return s if len(s) <= n else s[:n].rstrip() + "…"
+
+
+def _annotate_views(views):
+    """标注新增/更新/沿用 + 观点变化情况，并按发布日期降序。
+
+    对比基准存在 work/views_snapshot.json：
+      basis   —— 上一版已交付报告的观点集（判断"新增/更新/沿用"的基准）
+      current —— 本版观点集（下次运行的 basis）
+      last_asof —— 最近一次生成所对应的数据日期
+    同日重复运行（改模板/排障重跑）时 basis 不动，否则第二次就会把"更新"抹成"沿用"。
+    """
+    snap = {}
+    if os.path.exists(VIEWS_SNAP):
+        try:
+            snap = json.load(open(VIEWS_SNAP, encoding="utf-8")) or {}
+        except Exception:
+            snap = {}
+    prev = snap.get("basis") or {}
+    out = []
+    for e in views:
+        e = dict(e)
+        org, date, txt = e.get("org", ""), e.get("date", ""), e.get("view", "")
+        p = prev.get(org) if isinstance(prev.get(org), dict) else None
+        if not p:
+            st = "新增"
+        elif p.get("date", "") == date and p.get("view", "") == txt:
+            st = "沿用"
+        else:
+            st = "更新"
+        e["status"] = st
+        e["statusc"] = {"新增": "sp-new", "更新": "sp-upd", "沿用": "sp-old"}[st]
+        e["prevDate"] = (p or {}).get("date", "")
+        if st == "沿用":
+            e["change"] = "与前版（" + (e["prevDate"] or "—") + "）一致，观点未变。"
+        else:
+            ch = (e.get("change") or "").strip()
+            if not ch:
+                if st == "新增":
+                    ch = "本期新收录（此前未跟踪该机构观点）。"
+                else:
+                    ch = "此前（" + (e["prevDate"] or "—") + "）：" + _cut(p.get("view", ""))
+            e["change"] = ch
+        out.append(e)
+    out.sort(key=lambda x: (x.get("date") or "", x.get("org") or ""), reverse=True)
+    return out
+
+
+def _save_views_snapshot(views):
+    """报告成功落盘后更新快照。同一天重复运行只刷新 current，不动 basis。"""
+    cur_asof = "".join(ch for ch in cfg.ASOF_FMT if ch.isdigit())  # 统一成 20261027，避免与 ISO 形式比较失配
+    snap = {}
+    if os.path.exists(VIEWS_SNAP):
+        try:
+            snap = json.load(open(VIEWS_SNAP, encoding="utf-8")) or {}
+        except Exception:
+            snap = {}
+    cur = {e["org"]: {"date": e.get("date", ""), "view": e.get("view", "")} for e in views}
+    if snap.get("last_asof") == cur_asof:
+        snap["current"] = cur
+    else:
+        snap = {
+            "basis_asof": snap.get("last_asof", ""),
+            "basis": snap.get("current") or {},
+            "current": cur,
+            "last_asof": cur_asof,
+        }
+    json.dump(snap, open(VIEWS_SNAP, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 
 DATA = {
@@ -458,6 +541,12 @@ OUT = cfg.report_path(cfg.ASOF, cfg.REPORT_TAG)   # 试运行时带 IV_REPORT_TA
 html = open(os.path.dirname(os.path.abspath(__file__)) + "/template2.html", encoding="utf-8").read()
 html = html.replace("/*__DATA__*/", "const DATA = " + json.dumps(DATA, ensure_ascii=False) + ";")
 open(OUT, "w", encoding="utf-8").write(html)
+
+# 观点快照（供下次运行判定「新增/更新/沿用」；报告成功落盘后才写，避免半途失败污染对比基准）
+try:
+    _save_views_snapshot(DATA["views"])
+except Exception as _e:
+    print("  !! 观点快照写入失败：", _e)
 print("generated OK ->", os.path.basename(OUT))
 for r in rows:
     print(f"{r['name']:<6} ETF={r['etf']['code']} {r['etf']['share']}亿份 {r['etf']['scale']}亿元 | "
