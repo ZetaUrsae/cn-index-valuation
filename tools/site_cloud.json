@@ -1,0 +1,7 @@
+{
+  "endpoint": "https://index-valuation-daily-10055.app.workbuddy.host",
+  "oauthRelayBaseUrl": "https://www.workbuddy.cn/v2/as/genie-baas/oauth",
+  "publishableKey": "wbpk_fbftQTPhVJsSIQkZKy8ne2_UNektSmnjUoH4MPE60vbW3r6dR72cHcK",
+  "table": "reports",
+  "note": "云服务 publicConfig（可公开的端配置，非密钥）；appId=wbapp_fbftQTPhVJsSIQkZKy8ne2"
+}

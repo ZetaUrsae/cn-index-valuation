@@ -32,6 +32,32 @@
 
 ---
 
+## [v2.7.1] — 2026-11-03
+
+主题：**日报站点上线（WorkBuddy 发布）+ 接入云服务（报告清单存云端）**。
+
+### Added
+- `tools/build_site.py`：把 `reports/` 最近 N 期（默认 30）打包成可发布的静态站点 `site/`，
+  生成门户首页（左侧日期列表 + 右侧 iframe），echarts 与云 SDK 均本地化（不依赖 CDN），
+  自动排除 `_test` / `_band` / `archive`。`--emit-sql` 打印云端 `reports` 表的幂等 INSERT。
+- `tools/site_cloud.json`：云服务 publicConfig（endpoint / publishableKey / oauthRelayBaseUrl），
+  属公开端配置。
+- 已发布：https://index-valuation-daily-10055.app.workbuddy.host/?sharecode=WSS7KSLIGL
+  （应用 `wbapp_fbftQTPhVJsSIQkZKy8ne2`「宽基指数日报」）。
+
+### 云服务
+- 表 `reports`：`report_date`(PK) / `path` / `title` / `views` / `created_at`；已开 RLS，
+  `anon`+`authenticated` **只读**，不开放客户端写入（catalog 形态）。已写入 12 期。
+- 首页用 `@tencent-ai/workbuddy-cloud-sdk` 读云端列表；失败（离线/Origin/配额）自动回退
+  构建时快照，顶部徽标显示「云端同步 / 离线快照」，不会白屏。
+
+### 注意
+- `site/` 已加入 `.gitignore`（构建产物，不入库）。
+- 每天新增一期后：先 `build_site.py` 重建，再重新部署；云端表格需 `--emit-sql` 补一行
+  （或由部署前的 SQL 步骤维护）。**未接入定时任务**（用户要求）。
+
+---
+
 ## [v2.6.8] — 2026-10-27
 
 主题：**KPI 卡改用近五年分位**（与表内近十年形成对照）。
