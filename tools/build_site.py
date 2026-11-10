@@ -20,7 +20,8 @@ site/assets/cloud-sdk.js        云服务 SDK 本地副本（页面用它读云�
 规则
 ----
 - 只收正式文件名 `index_val_report_YYYYMMDD.html`，自动排除 `_test` / `_band` / archive；
-- 默认保留最近 30 期（`--limit` 可调），更早的留在 reports/ 本地；
+- 保留策略（v2.7.3 起）：**每月第一个交易日那期 + 最近 10 期**，并集去重（约 22 期/年上限），
+  `--recent N` 调近期数、`--no-monthly` 关闭月初锚点；
 - 幂等：每次重建会清空 site/reports 后重新拷贝，不影响原始报告；
 - 不发布任何东西，只生成本地目录。
 """
@@ -39,7 +40,8 @@ SDK_CDN = "https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/
 PAT = re.compile(r"^index_val_report_(\d{8})\.html$")
 
 
-def collect(limit):
+def collect(limit=30):
+    """全部正式报告（按日期倒序），limit<=0 表示不限。"""
     items = []
     for fn in os.listdir(REPORTS):
         m = PAT.match(fn)
@@ -48,7 +50,27 @@ def collect(limit):
         d = m.group(1)
         items.append(("%s-%s-%s" % (d[:4], d[4:6], d[6:]), fn))
     items.sort(reverse=True)
-    return items[:limit]
+    return items if limit <= 0 else items[:limit]
+
+
+def select_reports(items, recent=10, monthly=True):
+    """保留策略（2026-11-11 用户定）：每月第一个交易日那期 + 最近 N 期，并集去重。
+
+    - 「月初锚点」= 按 YYYY-MM 分组后该月最早的一期（不依赖交易日历，
+      天然对齐报告的数据日期）；
+    - 月初锚点必然与「最近 N 期」重叠，去重即可；
+    - 某月整月没跑则自然缺该锚点，不补。
+    """
+    keep = {}
+    for iso, fn in items[:recent]:
+        keep[iso] = fn
+    if monthly:
+        seen = {}
+        for iso, fn in sorted(items):          # 升序 → 每月第一条即最早
+            seen.setdefault(iso[:7], (iso, fn))
+        for iso, fn in seen.values():
+            keep[iso] = fn
+    return sorted(keep.items(), reverse=True)
 
 
 def _download(url, dst, min_size):
@@ -222,6 +244,7 @@ async function fromCloud() {
   });
   var res = await cloud.database.from(CLOUD.table || 'reports')
     .select('report_date,path,title')
+    .eq('archived', false)
     .order('report_date', { ascending: false })
     .limit(60);
   if (res.error || !res.data || !res.data.length) return null;
@@ -261,27 +284,39 @@ def write_index(items, cloud):
     print("  [site] index.html 已生成（%d 期快照 + 云端读取）" % len(items))
 
 
-def emit_sql(items):
+def emit_sql(all_items, selected):
+    """打印云端 reports 表的幂等同步语句。
+
+    同时维护 archived：入选站点的 false、未入选的 true —— 这样 DB 保留全量索引
+    （以后想回看或重新发布都能查到），首页只展示 archived=false，列表与文件始终一致。
+    """
+    keep = {iso for iso, _ in selected}
     rows = []
-    for iso, fn in items:
-        rows.append("('%s','reports/%s','宽基指数日报 %s')" % (iso, fn, iso))
-    print("INSERT INTO reports (report_date, path, title) VALUES\n  "
-          + ",\n  ".join(rows) + "\nON CONFLICT (report_date) DO NOTHING;")
+    for iso, fn in all_items:
+        rows.append("('%s','reports/%s','宽基指数日报 %s',%s)"
+                    % (iso, fn, iso, "false" if iso in keep else "true"))
+    print("INSERT INTO reports (report_date, path, title, archived) VALUES\n  "
+          + ",\n  ".join(rows) +
+          "\nON CONFLICT (report_date) DO UPDATE SET"
+          "\n  path = EXCLUDED.path, title = EXCLUDED.title, archived = EXCLUDED.archived;")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=30, help="保留最近多少期（默认 30）")
+    ap.add_argument("--recent", type=int, default=10, help="保留最近多少期（默认 10）")
+    ap.add_argument("--no-monthly", action="store_true", help="不保留每月第一个交易日锚点")
     ap.add_argument("--emit-sql", action="store_true",
-                    help="只打印云端 reports 表的幂等 INSERT，不构建目录")
+                    help="只打印云端 reports 表的幂等同步语句，不构建目录")
     args = ap.parse_args()
 
-    items = collect(args.limit)
-    if not items:
+    everything = collect(0)
+    if not everything:
         raise SystemExit("!! reports/ 下没有正式报告（index_val_report_YYYYMMDD.html）")
+    items = select_reports(everything, recent=args.recent,
+                           monthly=not args.no_monthly)
 
     if args.emit_sql:
-        emit_sql(items)
+        emit_sql(everything, items)
         return
 
     os.makedirs(SITE, exist_ok=True)

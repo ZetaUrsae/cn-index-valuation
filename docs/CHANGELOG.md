@@ -32,6 +32,25 @@
 
 ---
 
+## [v2.7.3] — 2026-11-11
+
+主题：**站点保留策略改为「每月首个交易日锚点 + 最近 10 期」**。
+
+### Changed
+- `tools/build_site.py`：新增 `select_reports()`，保留 = 每月（YYYY-MM 分组）最早一期
+  与最近 N 期（默认 10）的并集去重；`--recent N` 调近期数，`--no-monthly` 关闭锚点。
+  实测 18 期 → 收录 11 期（10-16 月锚 + 10-28~11-10），体积 4.6MB。
+- 云端 `reports` 表新增 `archived BOOLEAN NOT NULL DEFAULT false`；`--emit-sql` 改为
+  `INSERT ... ON CONFLICT DO UPDATE SET archived` —— **DB 保留全量索引**（18 条），
+  未入选的标 true（7 条），首页只查 `archived=false`（11 条），列表与文件始终一致。
+- 首页云端查询加 `.eq('archived', false)`。
+
+### 注意
+- 平台侧部署是"追加/覆盖"，**不会删除线上旧文件**：已归档的 `20261027.html` 直连仍返回 200，
+  只是不再出现在列表里。若要真正减体积，需另行清理（未做）。
+
+---
+
 ## [v2.7.2] — 2026-11-10
 
 主题：**移动端适配（方案 A：只加窄屏断点，桌面端不受影响）**。
