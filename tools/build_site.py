@@ -100,7 +100,7 @@ TPL = """<!doctype html>
   html,body{height:100%;margin:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
        "Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);}
-  .app{display:grid;grid-template-columns:236px 1fr;height:100vh;}
+  .app{display:grid;grid-template-columns:236px 1fr;height:100vh;height:100dvh;}
   aside{background:linear-gradient(180deg,#123257,#0d2340);color:#dbe6f5;
         display:flex;flex-direction:column;min-height:0;}
   .brand{padding:20px 18px 14px;border-bottom:1px solid rgba(255,255,255,.09);}

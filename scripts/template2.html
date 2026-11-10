@@ -152,6 +152,30 @@
   footer b{color:var(--ink2);}
   .dis{margin-top:12px;padding:12px 14px;background:#fdf7ee;border:1px solid #f0dcb8;border-radius:8px;color:#8a6b28;}
   @media(max-width:1080px){.kpi{grid-template-columns:repeat(3,1fr);}}
+
+  /* 移动端适配（v2.7.2）：全部规则只在 ≤640px 生效，桌面端零影响。
+     目标：手机上"能读、不乱、不白屏"，宽表允许横向滑动并给出提示。 */
+  @media(max-width:640px){
+    header h1{font-size:19px;margin-bottom:6px;}
+    header .sub{font-size:12px;gap:4px 12px;}
+    .hwrap{padding:0 12px;}
+    .wrap{padding:0 10px 32px;}
+    .card{padding:12px 10px !important;}
+    .sec-title{font-size:15px;margin:20px 0 10px;}
+    .sub-title{font-size:13px;margin:18px 0 9px;flex-wrap:wrap;gap:6px 8px;}
+    .kpi{grid-template-columns:repeat(2,1fr);gap:8px;}
+    .kpi .k{padding:8px 9px;}
+    .kpi .k .kname{font-size:13px;}
+    .kpi .k .kclose{font-size:11px;}
+    .kpi .k .kk{width:38px;font-size:9.5px;}
+    .chart{height:260px !important;}
+    table{font-size:11.5px;}
+    thead th,tbody td{padding:7px 8px;}
+    .c-sub,.note{font-size:11px;line-height:1.65;}
+    .seg button{font-size:11px;padding:3px 8px;}
+    .tblwrap::after{content:"← 左右滑动查看完整表格 →";display:block;position:sticky;left:0;
+      padding:6px 2px 0;font-size:10.5px;color:#8b98a8;text-align:center;}
+  }
 </style>
 </head>
 <body>
