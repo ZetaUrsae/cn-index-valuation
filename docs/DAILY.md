@@ -120,7 +120,8 @@ $NODE = C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
 
 ## 七、第 5 步：推送 GitHub（v2.6.4 起）
 
-仓库：`https://github.com/ZetaUrsae/cn-index-valuation`（私有），分支 `main`。
+仓库：`https://github.com/ZetaUrsae/cn-index-valuation`（公开），分支 `main`。
+（Actions 观察线产物在 `actions` 分支，由 `.github/workflows/daily.yml` 自行维护，本地永不推该分支。）
 仓库级身份已配置（`user.name=ZetaUrsae`、`user.email=21005787+ZetaUrsae@users.noreply.github.com`），
 凭据由 Git Credential Manager 缓存，正常 push 无需交互。
 
