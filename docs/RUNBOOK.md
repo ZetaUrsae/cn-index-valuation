@@ -28,44 +28,11 @@ C:/Users/zky12/.workbuddy/binaries/python/envs/default/Scripts/python.exe
 ls -lt reports/*.html | head -3
 ```
 
-### 1.2 人工指令（Tushare 校准 / 补数，默认不跑）
+### 1.2 补充说明
 
-为什么不再周期性跑，见 [DATA.md](DATA.md) 第一部分第三节（一句话：2015–2017 段
-已写定冻结，日常增量公开源全覆盖，深市份额缺口由深交所区间报表回补）。需要人工校准时：
-
-```bash
-$PY sync_tushare.py
-```
-
-输出示例：
-
-```
-[tushare-sync] 参考日 20261019  full=False  with_pcr=False
-  [ts-valuation] 000300.SH +11 → 2862 行 (末 20261019)
-  ...
-[tushare-sync] valuation 完成，新增 55 行
-[tushare-sync] quote 完成，新增 55 行
-[tushare-sync] etf 完成，新增 40 行
-```
-
-退出码：`0` 成功 / `1` Tushare 不可用（不致命）/ `2` 部分域失败。
-
-**close_history.json 的一次性回填已完成（2026-10-21），不要再跑**：
-
-```bash
-# 仅历史存档——2026-10-21 已执行，重复执行没有意义（缺的早已补齐）
-cd scripts && ASOF=20261020 $PY fetch_close_hist.py --seed-tushare
-```
-
-### 1.3 每周（交叉校验，只读）
-
-随时可跑，校验「当日值 vs 库内 Tushare 同日值 / 中证官网」：
-
-```bash
-$PY tools/verify_sources.py --csv
-```
-
-看最后一行 `异常 N 条 / 共 M 条`。`N > 0` 时按第五节排查。
+2015–2017 段已写定冻结，日常增量公开源全覆盖，深市份额缺口由深交所区间报表
+回补——不再有周期性校准/补数步骤；`close_history.json` 的 2015~2019 历史段也已在
+建库时写定冻结，不需要也无法重跑回填。
 
 ---
 
@@ -100,7 +67,6 @@ $PY run_daily.py --skip-bond            # 跳过 10Y 补齐（东财 10Y 慢/挂
 | 变量 | 默认 | 说明 |
 |------|------|------|
 | `ASOF` | 自动推导 | 参考交易日 `YYYYMMDD` |
-| `IV_ALLOW_TUSHARE` | `0` | 设 `1` 才允许 Tushare 进入降级链；默认全程禁用，仅 `sync_tushare.py` 自行开启 |
 | `IV_FORCE` | 空 | `域=provider`，强制某域走某源，如 `valuation=em_valuation` |
 | `IV_TIMEOUT` | `20` | 单请求超时（秒） |
 | `IV_RETRIES` | `3` | 重试次数 |
@@ -113,8 +79,6 @@ $PY run_daily.py --skip-bond            # 跳过 10Y 补齐（东财 10Y 慢/挂
 示例：
 
 ```bash
-# 排障：临时允许 Tushare 进入降级链（人工指定；平时不要设）
-IV_ALLOW_TUSHARE=1 $PY run_daily.py --fetch-only
 
 # 强制某域走某源
 IV_FORCE="valuation=em_valuation" $PY run_daily.py --fetch-only
@@ -133,7 +97,7 @@ IV_FORCE="valuation=em_valuation" $PY run_daily.py --fetch-only
 | `data/etf_raw.json` | run_daily sync_etfs | ETF 份额与行情（2023 起） | ❌ **禁止** |
 | `data/pcr_raw.csv` | run_daily sync_pcr | 期权 PCR 日度聚合（2022-10 起） | ❌ **禁止** |
 | `data/yield10y_history.json` | run_daily 第 5 步 / fetch_yield_tail.py | 10Y 国债日频（2002 起，扁平字典） | ❌ **禁止** |
-| `data/close_history.json` | fetch_close_hist.py（run_daily 第 6 步，非致命） | 五指数日收盘价 2015 起（2015~2019 为 Tushare 2026-10-21 一次性回填，其后东财 K 线增量），PE/PB Band 与点位分位/点位中位数（v2.6.3）专用 | ❌ **禁止** |
+| `data/close_history.json` | fetch_close_hist.py（run_daily 第 6 步，非致命） | 五指数日收盘价 2015 起（2015~2019 为一次性回填的历史段，其后东财 K 线增量），PE/PB Band 与点位分位/点位中位数（v2.6.3）专用 | ❌ **禁止** |
 | `data/futures_kline.json` | fetch_futures.py（run_daily 第 7 步，非致命） | IH/IF/IC/IM 当月连续日收盘（新浪合约 K 线拼接，2018-10 起）+ 中证1000 现货 SPOT852（东财，2022-01 起）+ `_meta.contract` 当前当月合约码，情绪面基差图（v2.6.5）专用 | ❌ **禁止** |
 | `data/opt_contracts.json` | meta.py | 期权合约表缓存（TTL 4 天） | ⚠ 可删，会重新拉（慢） |
 | `data/em_constituents.json` | em_valuation | 东财成分股缓存（TTL 7 天） | ⚠ 可删，会重拉 |
@@ -161,9 +125,9 @@ IV_FORCE="valuation=em_valuation" $PY run_daily.py --fetch-only
    ERP 专题整段空白（报告从 ~25 万掉到 ~20 万字节）。
 
 3. **`close_history.json` 是 `{ts_code: {"YYYY-MM-DD": close}}` 的两层字典**。
-   写入者只有 `fetch_close_hist.py`（东财增量）；2015~2019 段由 Tushare
+   写入者只有 `fetch_close_hist.py`（东财增量）；2015~2019 段为一次性回填
    `index_daily` 一次性回填（2026-10-21，用户批准仅此一次，**不要再跑
-   `--seed-tushare`**）。已有历史不覆盖、只补缺，最近 3 天允许覆盖。
+   不再重取**）。已有历史不覆盖、只补缺，最近 3 天允许覆盖。
    v2.6.3 起 `process.py` 也**只读**本文件（算点位分位与近10年点位中位数）。
 
 ---
@@ -250,10 +214,10 @@ print([r['cal_date'] for r in c if r['is_open']][-8:])
 "
 ```
 
-### 5.5 PCR 与 Tushare 差很多（某一天）
+### 5.5 PCR 某一天明显偏小
 
 **先看是不是到期日**。到期日（每月第四个周三）交易所报的是**结算后**持仓量，
-Tushare 报**收盘**持仓量，2026-09-23 实测差 0.577×，成交量与成交额完全一致。
+与**收盘**持仓量口径不同，2026-09-23 实测差 0.577×，成交量与成交额完全一致。
 这是口径差异，不是 bug，已在 `exchange.py` 记为 `KNOWN_OI_DIVERGENCE`。
 
 非到期日偏差 >10% 才算异常，按 5.3 的方式单跑一天对比。
@@ -267,7 +231,7 @@ Tushare 报**收盘**持仓量，2026-09-23 实测差 0.577×，成交量与成�
 说明深交所把本机 IP 掐了（WAF）。症状：连 `https://www.szse.cn/` 都打不开，
 `RemoteDisconnected`；TCP 能连、TLS 也能握手，但 HTTP 请求被直接掐掉。
 **不要立刻重试**，越试封得越久（2026-10-20 实测：连续测试十几发后封了 1 小时以上）。
-等它自愈。此时当日那一行份额会缺失（不自动回落 Tushare），先记为缺口；
+等它自愈。此时当日那一行份额会缺失（不自动回落其他源），先记为缺口；
 下次运行由深交所「基金规模」区间报表（`szse_etf_share_range`，一次可查 6 个月）
 自动补齐。若区间报表同时被限流，缺口留到配额恢复后自动补，报告仍可出。
 
@@ -333,7 +297,7 @@ ks=sorted(d); print('末5:', [(k,d[k]) for k in ks[-5:]])
 每次改动取数逻辑或 provider 后，按这个清单验证：
 
 ```bash
-# 1. 正常跑一次（全程零 Tushare，Tushare 默认禁用）
+# 1. 正常跑一次
 $PY run_daily.py
 
 # 1b. 确认报告指纹与改动前一致（版式不许变）
@@ -347,7 +311,6 @@ used={}
 for r in p['records']:
     if r['ok']: used.setdefault(r['domain'],set()).add(r['provider'])
 for d,s in sorted(used.items()): print('%-12s %s'%(d, ', '.join(sorted(s))))
-print('Tushare 记录:', [ (r['domain'],r['ok']) for r in p['records'] if 'tushare' in r['provider'] ])
 "
 
 # 2. 结构一致性（与上一版报告对比）
@@ -388,27 +351,3 @@ $PY tools/verify_sources.py --asof <日期>
 > 本机**无头浏览器截图不可用**，所以版式验证只能靠上面这种静态计数 +
 > `node --check` 校验内联 JS，不能靠截图肉眼比对。
 
----
-
-## 七、旧管线（备用）
-
-`scripts/run_weekly.py` 是 v1 入口（全 Tushare，10 步）。
-**仅在人工指令下使用**——定时任务不会自动切到它（见 DAILY.md 四），因为它会把 Tushare 数值
-写进 `data/raw.json` 历史库。
-
-```bash
-cd scripts
-ASOF=20261019 $PY run_weekly.py
-```
-
-两套入口对比：
-
-| | `run_daily.py`（v2，日常） | `scripts/run_weekly.py`（v1，备用） |
-|---|---|---|
-| 取数来源 | 新浪 / 东财 / 交易所官方 | Tushare |
-| Tushare 调用 | 0 次（深市份额缺口由区间报表回补） | ~15 次/天，1 万+ 行 |
-| 降级能力 | 每域有优先级链，自动降级 | 无，任一接口挂就断 |
-| 溯源 | `work/provenance.json` | 无 |
-| 产出 | **完全一致** | **完全一致** |
-
-两者加工步骤完全相同，可交替使用，数据文件格式一致。

@@ -2,7 +2,7 @@
 """ivdata.registry —— provider 注册表 + 降级链调度。
 
 调用方只需要 ``Registry.get().fetch("valuation", ...)``，
-不必关心背后是新浪、中证、东财还是 Tushare。
+不必关心背后是新浪、中证、东财还是交易所官方接口。
 """
 from __future__ import annotations
 
@@ -74,9 +74,6 @@ class Registry:
             if domain not in p.domains:
                 errors.append(f"{name}: 不支持 {domain}")
                 continue
-            if name.startswith("tushare") and not SETTINGS.allow_tushare:
-                errors.append(f"{name}: 已按配置禁用")
-                continue
             try:
                 if not p.available():
                     errors.append(f"{name}: 依赖不可用")
@@ -113,10 +110,6 @@ class Registry:
                             % (domain, "\n  - ".join(errors)))
 
     # -------------------------------------------------- 查询
-    def used_tushare(self) -> bool:
-        """本次运行是否动用了 Tushare（兜底生效）。"""
-        return any(r.provider.startswith("tushare") and r.ok for r in self.prov.records)
-
     def fallbacks(self) -> List[str]:
         """返回「降级到备选源」的域列表，便于在日报里一眼看出哪里抖了。"""
         return [r.domain for r in self.prov.records if r.ok and r.fallback_from]

@@ -7,10 +7,8 @@
 调参建议
 --------
 * 想强制走某个源：把该源名字放到链路第一位，或设环境变量 IV_FORCE=<domain>=<provider>。
-* Tushare 默认**不参与任何取数**（含兜底）。只有显式设 IV_ALLOW_TUSHARE=1 才会进入
-  降级链，值班时不要设；需要它时是人工指令场景（sync_tushare.py 会自己打开）。
 * 深市 ETF 份额：日常走「1105 当前规模快照」，漏跑的日子由「基金规模区间报表
-  （scsj_fund_jjgm）」自动回补，两者都不需要 Tushare。
+  （scsj_fund_jjgm）」自动回补。
 """
 from __future__ import annotations
 
@@ -43,11 +41,6 @@ class Settings:
     retries: int = int(os.environ.get("IV_RETRIES", "3"))
     backoff: float = float(os.environ.get("IV_BACKOFF", "1.5"))
     qps: float = float(os.environ.get("IV_QPS", "5"))   # 每源每秒请求数上限
-    # 是否允许 Tushare 进入降级链（默认 False = 完全不用，含兜底）。
-    # 只有人工明确要「用 Tushare 校准/补数」时才设 IV_ALLOW_TUSHARE=1，
-    # 例如 sync_tushare.py（它在导入本模块前自行打开）。
-    allow_tushare: bool = os.environ.get("IV_ALLOW_TUSHARE", "0") in ("1", "true", "yes")
-
     # 逐合约期权明细的数据量很大，默认不做（PCR 改用官方汇总）
     # 需要时设 IV_OPT_CONTRACT_DETAIL=1
     opt_contract_detail: bool = os.environ.get("IV_OPT_CONTRACT_DETAIL", "0") in ("1", "true", "yes")
@@ -122,7 +115,7 @@ HOST_QPS = {
 
 # ---------------------------------------------------------------- 标的定义
 
-# 报告跟踪的五大宽基。code 用 Tushare 风格（带交易所后缀），便于与旧数据对齐。
+# 报告跟踪的五大宽基。code 带交易所后缀，与库内历史数据对齐。
 INDEXES = [
     #  order, code,        name,      sina_symbol, em_secid,  csi_code
     (1, "000300.SH", "沪深300", "sh000300", "1.000300", "000300"),
@@ -166,28 +159,24 @@ ETF_ALL = ETF_LIST + ["159919.SZ", "159922.SZ", "588080.SH"]
 # 每个域的值是 provider 名列表，按优先级排列。
 # 名字需在 ivdata/providers/__init__.py 的 PROVIDERS 中注册。
 DOMAINS = {
-    # 指数日行情（OHLCV）：新浪 → 东财 → Tushare
+    # 指数日行情（OHLCV）：新浪 → 东财
     # ⚠ 中证官网的 index-perf-oneday 只给当日单点，无历史，不放进链里（见 csi.py 说明）
-    "quote": ["sina_quote", "em_quote", "tushare_quote"],
+    "quote": ["sina_quote", "em_quote"],
 
-    # 指数估值（PE_TTM / PB）：东财成分股加权 → Tushare 兜底
+    # 指数估值（PE_TTM / PB）：东财成分股加权（唯一主源）
     # ⚠ csi_valuation 只有静态 PE（字段还叫 peg），无 PB、无创业板指，
     #   口径与报告的 PE_TTM 不一致（科创50 差近一倍），**不可作为主源**。
-    #   它的正确定位是「交叉校验参考」，见 tools/verify_sources.py。
-    "valuation": ["em_valuation", "tushare_valuation"],
+    "valuation": ["em_valuation"],
 
-    # 期权 PCR（标的级汇总）：上交所/深交所官方日统计 → Tushare 逐合约汇总
-    "option_pcr": ["exchange_pcr", "tushare_pcr"],
+    # 期权 PCR（标的级汇总）：上交所/深交所官方日统计
+    "option_pcr": ["exchange_pcr"],
 
     # ETF 份额：沪市走上交所官方（全历史）；深市日常走深交所「当前规模」单日快照，
     # 缺口由深交所「基金规模区间报表」（一次可查 6 个月）自动回补。
-    # 两条官方通道覆盖后，日常与周末都无需 Tushare；tushare_etf_share 仅在
-    # IV_ALLOW_TUSHARE=1（人工指令）时才可能被调度到。
-    "etf_share": ["exchange_etf_share", "szse_etf_share",
-                  "szse_etf_share_range", "tushare_etf_share"],
+    "etf_share": ["exchange_etf_share", "szse_etf_share", "szse_etf_share_range"],
 
-    # ETF 日行情：新浪 → Tushare
-    "etf_quote": ["sina_quote", "tushare_etf_quote"],
+    # ETF 日行情：新浪
+    "etf_quote": ["sina_quote"],
 
     # 10 年期国债收益率：东财增量（唯一写入者）
     "bond10y": ["em_bond10y"],

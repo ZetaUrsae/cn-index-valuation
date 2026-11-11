@@ -17,7 +17,7 @@
      SECURITY_CODE      标的代码 510050
      CALL_VOLUME        认购成交量
      PUT_VOLUME         认沽成交量
-     LEAVES_CALL_QTY    未平仓认购（双边加总，与 Tushare 逐位一致）
+     LEAVES_CALL_QTY    未平仓认购（双边加总）
      LEAVES_PUT_QTY     未平仓认沽
      CP_RATE            认沽/认购(%)
    月度统计把 sqlId 换成 COMMON_SSE_ZQPZ_YSP_QQ_SJTJ_YDTJ_CX，tradeDate 传 YYYYMM。
@@ -32,15 +32,15 @@
    ⚠ PAGESIZE 上限 500，超过被静默截断。
    返回字段：
      bdzqdm  标的代码+名称  创业板ETF易方达(159915)
-     kzjysl  认购交易数量   ← 与 Tushare c_vol **逐位相等**
-     kdjysl  认沽交易数量   ← 与 Tushare p_vol **逐位相等**
-     kzccsl  认购持仓数量   ← 单边口径（对冲后），比 Tushare 低 7%~8%
-     kdccsl  认沽持仓数量   ← 单边口径（对冲后），比 Tushare 低 12%~16%
+     kzjysl  认购交易数量   ← 官方披露
+     kdjysl  认沽交易数量   ← 官方披露
+     kzccsl  认购持仓数量   ← 单边口径（对冲后）
+     kdccsl  认沽持仓数量   ← 单边口径（对冲后）
    页脚原文：「认购（认沽）未平仓量按对冲后的权利仓（或义务仓）单边计算。」
 
    **口径处理（v2.5.0 起）**：深市持仓量**直接采用页面单边原值，不做任何换算**。
    这样报告里创业板指的持仓量 / PCR 与深交所官网逐位对得上，可人工复核。
-   代价：与 2026-09-08 及更早的 Tushare 双边口径历史存在约 5%~8% 的台阶
+   代价：与 2026-09-08 及更早的双边口径历史存在约 5%~8% 的台阶
    （PCR 分位的可比性见 docs/DATA_SOURCES.md「深市期权未平仓量」）。
    （v2.4.x 曾用固定系数乘回双边，属于自定口径、无官方依据，已废弃。）
 
@@ -51,7 +51,7 @@
    &isPagination=true&pageHelp.pageSize=500&pageHelp.pageNo=1
 
    字段：STAT_DATE / SEC_CODE / SEC_NAME / TOT_VOL（万份）
-   单位与 Tushare fund_share.fd_share/10000 一致。
+   单位与库内历史份额字段一致（万份口径）。
    深市 ETF（159915）本接口覆盖不到，走深交所基金规模（见 4）。
 
 --------------------------------------------------------------------------
@@ -87,9 +87,9 @@ class ExchangePcr(Provider):
     domains = ("option_pcr",)
     desc = "沪深交易所官方期权日统计（沪市双边、深市单边，均按官网原值落库）"
 
-    # 已知与 Tushare 存在口径差异的日子：到期日（每月第四个周三）交易所披露的是
-    # 「交割后」持仓量，Tushare 取的是「收盘」持仓量，前者会明显偏小。
-    # 实测 2026-09-23：510050 交易所 461,524 vs Tushare 799,982（0.577 倍），
+    # 已知口径提示：到期日（每月第四个周三）交易所披露的是
+    # 「交割后」持仓量，与「收盘」持仓量口径不同，前者会明显偏小。
+    # 实测 2026-09-23：510050 交割后 461,524 vs 收盘口径 799,982（0.577 倍），
     # 而成交量、成交额完全一致 —— 说明不是取数缺失，是口径不同。
     # 这类日子不做修正（无法反推交割前后差异），只在此登记供排查时参考。
     KNOWN_OI_DIVERGENCE = ("20260923",)
@@ -320,7 +320,7 @@ class ExchangeEtfShare(Provider):
 
 
 class SzseEtfShare(Provider):
-    """深交所基金列表的「当前规模」（万份）—— 深市 ETF 份额的唯一非 Tushare 源。
+    """深交所基金列表的「当前规模」（万份）—— 深市 ETF 份额的官方源。
 
     接口
     ----
@@ -330,7 +330,7 @@ class SzseEtfShare(Provider):
     ``txtkey1`` 是页面上的「代码或简称」筛选框，实测可把 1075 行缩到 1 行，
     一次请求即可，不必像早期实现那样翻 54~60 页（翻页还容易在中途被限频）。
 
-    字段 ``dqgm`` = 当前规模（万份），与 Tushare ``fund_share.fd_share/1e4``
+    字段 ``dqgm`` = 当前规模（万份），与库内历史份额字段
     **逐位一致**（2026-10-20 实测 2,673,645.49 vs 2,673,645.4936，仅差深交所
     只保留 2 位小数造成的舍入）。
 
@@ -338,7 +338,7 @@ class SzseEtfShare(Provider):
     ------------------
     1. **只有当日快照，没有历史区间参数。** 本 provider 每次只能贡献 1 行，
        日常靠每日运行「往后追」；漏跑的日子由 ``SzseEtfShareRange``（区间报表，
-       见下）自动回补，不再依赖 Tushare。
+       见下）自动回补。
     2. **日期归属错位一天。** ``metadata.subname`` 是快照日（如 2026-10-20），
        而列头括号里印的却是 2026-10-19。实测 dqgm 的值属于 subname 那天。
        稳妥做法是取 ``min(subname, end)``：早间运行时 subname 可能已翻到
@@ -451,7 +451,7 @@ class SzseEtfShareRange(Provider):
     页面 ``market/fund/volume/etf/index.html``（市场数据 → 基金规模）的查询条件
     在接口元数据里写死了 ``dateRange('all','${txtEnd}','6m')``：**单次最多 6 个月**，
     本 provider 自动切块。每页 20 行，字段 ``size_date`` / ``fund_code`` /
-    ``current_size``（万份，含千分位），值与 Tushare ``fund_share.fd_share`` 同源同值。
+    ``current_size``（万份，含千分位），与库内历史份额字段同源同值。
 
     ⚠ 标签日错位一个交易日（2026-10 实测 155/155 行命中）
     -----------------------------------------------------

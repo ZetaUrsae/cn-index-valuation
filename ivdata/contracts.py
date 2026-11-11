@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class QuoteBar:
-    """指数 / ETF 日线，对齐 Tushare index_daily / fund_daily 字段。"""
+    """指数 / ETF 日线（OHLCV + 成交额），字段与库内历史数据对齐。"""
     trade_date: str          # YYYYMMDD
     close: float
     open: Optional[float] = None
@@ -33,7 +33,7 @@ class QuoteBar:
 
 @dataclass
 class ValuationRow:
-    """指数估值，对齐 Tushare index_dailybasic 字段。"""
+    """指数估值（PE/PB/市值/换手等），字段与库内历史数据对齐。"""
     trade_date: str
     pe: Optional[float] = None
     pe_ttm: Optional[float] = None
@@ -75,7 +75,7 @@ class OptionPcrRow:
 
 @dataclass
 class EtfShareRow:
-    """ETF 份额，对齐 Tushare fund_share 字段（fd_share 单位：万份）。"""
+    """ETF 份额（单位：万份）。"""
     trade_date: str
     fd_share: float
 
@@ -109,7 +109,7 @@ class ProviderError(Exception):
 
 
 class ProviderUnavailable(ProviderError):
-    """provider 依赖缺失（如未安装 tushare / 无 token）——直接跳过，不重试。"""
+    """provider 依赖缺失（如缺少本地缓存/配置）——直接跳过，不重试。"""
 
 
 class ProviderNotApplicable(ProviderUnavailable):

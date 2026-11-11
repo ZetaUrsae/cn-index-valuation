@@ -14,25 +14,24 @@
 
 
 本文件记录每个数据域**用哪些源、为什么这么排、精度如何验证**。
-新管线（v2）的原则：**日常完全不用 Tushare**，能用公开源的一律用公开源。
-Tushare 只在人工指令（`sync_tushare.py`，或显式设 `IV_ALLOW_TUSHARE=1`）时才参与，
-其余情况下连兜底都不会触发；它已写定的 2015 起历史永久留存、不再重拉。
+管线（v2）的原则：**只走公开源**（新浪 / 东财 / 沪深交易所官方 / 中证官网），
+不依赖任何需要 token 的收费数据源；2015 起的一次性回填历史段永久留存、不再重拉。
 
 ---
 
 ## 一、总览
 
-| 数据域 | 优先级链 | 日常实际使用 | 历史起点 | Tushare 是否参与 |
-|--------|----------|--------------|----------|------------------|
-| `quote` 指数日行情 | `sina_quote` → `em_quote` → `tushare_quote` | 新浪 | 2019-12（本地）/ 2010+（源） | 否 |
-| `valuation` 指数估值 | `em_valuation` → `tushare_valuation` | 东财成分股聚合 | **2018-01-02** | 否 |
-| `option_pcr` 期权 PCR | `exchange_pcr` → `tushare_pcr` | 上交所/深交所官方 | 2022-10-10（科创50 2023-06-05） | 否 |
-| `etf_share` ETF 份额 | `exchange_etf_share`(沪) / `szse_etf_share`(深快照) → `szse_etf_share_range`(深区间) → `tushare_etf_share` | 上交所官方 + 深交所快照/区间 | 2023-01（本地） | 否 |
-| `etf_quote` ETF 行情 | `sina_quote` → `tushare_etf_quote` | 新浪 | — | 否 |
-| `bond10y` 10Y 国债 | `em_bond10y`（唯一源；`manual_bond10y` 已于 v2.4.0 删除） | 东财（中债数据） | 2002-01-04 | 否 |
-| `close_hist` 指数收盘价（Band 图专用） | `fetch_close_hist.py`：东财 K 线 `push2his`（日常增量）→ **失败自动降级新浪指数日 K**（v2.6.6）；2015~2019 为 Tushare `index_daily` **一次性回填（2026-10-21，仅此一次）** | 东财 K 线 / 新浪（备） | 2015-01-05（科创50 自基日） | 已回填段是；此后否 |
-| `futures` 股指期货当月连续 + 中证1000 现货 | `fetch_futures.py`（v2.6.5，run_daily 补步骤，非致命；`--seed` 一次性全量 2026-10-26 已完成） | 新浪合约日 K 线拼接 + 东财 K 线（现货） | 2018-10-22（IM 2022-07-22；现货 2022-01-04） | 否 |
-| `calendar` 交易日历 | `sse_calendar` → `local_calendar` | 上交所 | — | 否 |
+| 数据域 | 优先级链 | 日常实际使用 | 历史起点 |
+|--------|----------|--------------|----------|
+| `quote` 指数日行情 | `sina_quote` → `em_quote` | 新浪 | 2019-12（本地）/ 2010+（源） |
+| `valuation` 指数估值 | `em_valuation` | 东财成分股聚合 | **2018-01-02** |
+| `option_pcr` 期权 PCR | `exchange_pcr` | 上交所/深交所官方 | 2022-10-10（科创50 2023-06-05） |
+| `etf_share` ETF 份额 | `exchange_etf_share`(沪) / `szse_etf_share`(深快照) → `szse_etf_share_range`(深区间) | 上交所官方 + 深交所快照/区间 | 2023-01（本地） |
+| `etf_quote` ETF 行情 | `sina_quote` | 新浪 | — |
+| `bond10y` 10Y 国债 | `em_bond10y`（唯一源；`manual_bond10y` 已于 v2.4.0 删除） | 东财（中债数据） | 2002-01-04 |
+| `close_hist` 指数收盘价（Band 图专用） | `fetch_close_hist.py`：东财 K 线 `push2his`（日常增量）→ **失败自动降级新浪指数日 K**（v2.6.6）；2015~2019 为一次性回填的历史段（已冻结） | 东财 K 线 / 新浪（备） | 2015-01-05（科创50 自基日） |
+| `futures` 股指期货当月连续 + 中证1000 现货 | `fetch_futures.py`（v2.6.5，run_daily 补步骤，非致命；`--seed` 一次性全量 2026-10-26 已完成） | 新浪合约日 K 线拼接 + 东财 K 线（现货） | 2018-10-22（IM 2022-07-22；现货 2022-01-04） |
+| `calendar` 交易日历 | `sse_calendar` → `local_calendar` | 上交所 | — |
 
 > `csi_valuation` / `csi_quote`（中证指数官网）**不在任何主链里**，
 > 仅作为 `tools/verify_sources.py` 的交叉校验参考。原因见第二节第 5 条。
@@ -87,14 +86,14 @@ PE = Σmv / Σ(mv / PE_i)      PB = Σmv / Σ(mv / PB_i)
 |----------|----------|------|
 | `pe_ttm` | `PE_TTM` | 动态市盈率 |
 | `pb` | `PB_MRQ` | 市净率（最近报告期） |
-| `pe`（静态） | `PE_LAR` | 最近年报 PE，聚合后与 Tushare 的 `pe` 逐位吻合（192.2792 vs 192.2791） |
-| `total_mv` | `TOTAL_MARKET_CAP` | **单位是元**，但数值与 Tushare `index_dailybasic.total_mv` 完全相等，**不要任何换算** |
+| `pe`（静态） | `PE_LAR` | 最近年报 PE，聚合后与库内历史 `pe` 逐位吻合（192.2792 vs 192.2791） |
+| `total_mv` | `TOTAL_MARKET_CAP` | **单位是元**，数值与库内历史存值完全相等，**不要任何换算** |
 | `float_mv` | `NOTLIMITED_MARKETCAP_A` | 自由流通市值 |
 | `turnover_rate_f` | 需另算 | 由成交量与自由流通股本推导 |
 
 > 单位坑：曾错误地除以 1e4（以为元→万元），导致 `total_mv` 差 10000 倍
-> （6551594005 vs 65515922156051）。**东财的元数值直接就是 Tushare 存的值**，
-> 因为 Tushare 文档写的"万元"实际口径如此。
+> （6551594005 vs 65515922156051）。**东财的元数值直接就是历史库存的值**，
+> 与常见接口文档标注的"万元"口径不同。
 
 **历史下界**：`2018-01-02`。2017-12-01 及更早返回"返回数据为空"。
 
@@ -106,7 +105,7 @@ PE = Σmv / Σ(mv / PE_i)      PB = Σmv / Σ(mv / PB_i)
 | 2021-01-04 | +6.95% / −0.73% |
 | 2023-01-03 | −2.74% / −4.96% |
 
-这正是历史段必须由 Tushare 一次性写定的理由（东财不能用当前成分股回补早年），
+这正是历史段必须一次性写定的理由（东财不能用当前成分股回补早年），
 写定后冻结、不再重拉；日常增量交给东财。
 
 ### 2. 新浪财经 —— 指数/ETF 行情
@@ -114,7 +113,7 @@ PE = Σmv / Σ(mv / PE_i)      PB = Σmv / Σ(mv / PB_i)
 `https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData`
 
 - 单次最多 1023 根 K 线，需分页。
-- ⚠ `volume` 单位是**股**，Tushare `vol` 是**手**（1 手 = 100 股）→ **除以 100**。
+- ⚠ `volume` 单位是**股**，历史库口径是**手**（1 手 = 100 股）→ **除以 100**。
 - 无 `amount` 字段，按 `close × vol(手) × 100 / 1000` 估算（千元）。
 - 返回体可能是 JSONP，`ivdata.http._loads` 已做 BOM/JSONP 容错。
 
@@ -126,7 +125,7 @@ PE = Σmv / Σ(mv / PE_i)      PB = Σmv / Σ(mv / PB_i)
 - 按 `tradeDate` 逐日查；每交易日 5 行（认购/认沽 × 持仓/成交）。
 - 需要 `Referer: http://www.sse.com.cn/`。
 - 已实现 `pageHelp.pageSize=100` 分页循环，实测只有 5 行，但保留以防改版。
-- ⚠ **到期日（周三）差异**：交易所报的是**结算后**持仓量，Tushare 报**收盘**持仓量。
+- ⚠ **到期日（周三）差异**：交易所报的是**结算后**持仓量，与**收盘**持仓量口径不同。
   2026-09-23 实测 `oi_pcr` 差到 0.577×（成交量、成交额完全一致）。
   这是会计口径差异，不是取数 bug，已在 `exchange.py` 记录为
   `KNOWN_OI_DIVERGENCE = ("20260923",)`。
@@ -141,7 +140,7 @@ GET https://query.sse.com.cn/commonQuery.do
 ```
 
 - 一次返回**某一日全市场 ETF 名单**（约 920 只 / 2 页），字段 `SEC_CODE` + `TOT_VOL`（万份，
-  与 Tushare `fund_share.fd_share` 同值）；
+  与库内历史份额字段同值）；
 - **没有区间参数**。`STAT_DATE` 是唯一的时间入口：传某个历史日期可回查当日的份额，
   实测 `STAT_DATE=2026-09-15` 返回 907 行、值与我们库里逐位一致；
 - 因此 provider 按 `STAT_DATE=end` 精确定位当日，取不到再退回「最新一日」——
@@ -163,13 +162,13 @@ GET https://query.sse.com.cn/commonQuery.do
 筛选框就是 `txtkey1`，实测能把结果缩到 1 行，**一次请求即可**，
 不必再像早期实现那样翻 54 页（翻页正是触发限流的主因）。
 
-字段 `dqgm` = 当前规模（万份），与 Tushare `fund_share.fd_share / 1e4` **逐位一致**：
-2026-10-20 实测深交所 2,673,645.49 vs Tushare 2,673,645.4936，只差深交所保留 2 位小数。
+字段 `dqgm` = 当前规模（万份），与库内历史份额字段**逐位一致**：
+2026-10-20 实测深交所 2,673,645.49 vs 库内存值 2,673,645.4936，只差深交所保留 2 位小数。
 
 四个必须记住的性质：
 
 1. **快照只有当日一个值，没有历史区间参数。** 每次只贡献 1 行，靠每日运行往后追；
-   漏跑的日子由下面的「区间报表」（`scsj_fund_jjgm`）自动回补，**不需要 Tushare**。
+   漏跑的日子由下面的「区间报表」（`scsj_fund_jjgm`）自动回补。
 2. **日期归属容易错位一天。** `metadata.subname` 是快照日（形如 `2026-10-20`），
    而列头括号里印的日期却是前一天。实测 `dqgm` 的值属于 `subname` 那天，
    所以取 `min(subname, end)`：早间运行时 subname 可能已翻到下一交易日，
@@ -185,7 +184,7 @@ GET https://query.sse.com.cn/commonQuery.do
    （曾因 40 天窗口每次运行发 26 发，把配额吃光）。
    另外 `Pipeline.sync_etfs` 有「疑似未刷新就换源重取」的判定。
 
-**为什么不拿周度 Tushare 顶替**：份额是日报「资金面」的 5/20/60 日变化基准，
+**为什么每日取而非周度顶替**：份额是日报「资金面」的 5/20/60 日变化基准，
 周内不动就会让曲线出现台阶，所以仍然每日从深交所取。
 
 **深市份额的缺口回补（区间报表）**
@@ -200,7 +199,7 @@ GET https://www.szse.cn/api/report/ShowReport/data
 
 - 页面查询条件在接口元数据里写死 `dateRange('all','${txtEnd}','6m')`：**单次最多 6 个月**，
   每页 20 行，字段 `size_date` / `current_size`（万份，含千分位），
-  与 Tushare `fund_share.fd_share` 同源同值；
+  与库内历史份额字段同源同值；
 - **标签日错位一个交易日**：`size_date` 标的是「官方份额日的前一个交易日」，即
   `row[label] == 官方[交易日历中 label 的下一个交易日]`。两个独立窗口实测
   155/155 行全部命中（2026 年 4-10 月 118 行、2-4 月 37 行），只有末尾未定稿的
@@ -209,7 +208,7 @@ GET https://www.szse.cn/api/report/ShowReport/data
   「官方日 > 今天-1」的行——这几天正好由每日快照覆盖；
 - 成本：管线**只在检测到缺口时**才调用，45 天缺口 ≈ 2 页 = 2 个请求，
   正常每天跑一次则一次都不发；缺口超过 120 天（首次建库 / 长期停机）时只补最近
-  120 天，更早的走人工 `sync_tushare.py`，避免一次翻几十页把配额打光。
+  120 天，更早的不自动回补，避免一次翻几十页把配额打光。
 
 > 管道分工：`SzseEtfShare` 负责当日快照，`SzseEtfShareRange` 负责历史缺口，
 > 回补只写缺失日期、已有日期一律以库内为准（标签错位一旦写反会污染整条序列）。
@@ -227,17 +226,11 @@ GET https://www.szse.cn/api/report/ShowReport/data
 因此只用于「数量级 sanity check」：沪深300/上证50 的静态 PE 与 TTM PE 接近，
 可以用 ±3% 判；中证500/科创50 天然偏离 20%~45%（成长股盈利波动大），不判。
 
-### 6. Tushare Pro（默认完全禁用，仅人工指令）
+### 6. 关于外部收费数据源
 
-`index_dailybasic` / `daily` / `opt_daily` / `fund_share`。
-
-- **默认不参与任何取数，包括兜底**：`Registry.fetch` 会跳过所有 `tushare*`
-  provider（`SETTINGS.allow_tushare=False`）。只有显式设 `IV_ALLOW_TUSHARE=1`
-  才会进入降级链，`sync_tushare.py` 在导入配置前自行打开。
-- `sync_tushare.py` 是人工指令入口：2015 起的权威历史校准、以及需要时的一次性补数。
-  它写定的历史（`raw.json` / `etf_raw.json`）**永久留存，不再重拉**。
-- 日常七个域（行情、估值、PCR、沪市份额、深市份额、ETF 行情、10Y、日历）
-  全部不碰 Tushare；深市份额的缺口也能用深交所区间报表补上。
+历史版本曾以某收费数据源作兜底与历史校准，现已整体移除（代码、配置、文档均不再保留入口）。
+它写定的历史段（`raw.json` / `etf_raw.json` / `close_history.json` 的 2015 起部分）
+**永久留存，不再重拉**。
 
 实测一次日常运行的 provider 分布（2026-10-21 09:1x，深交所正常时）：
 
@@ -246,42 +239,17 @@ calendar   sse_calendar
 quote      sina_quote
 valuation  em_valuation
 option_pcr exchange_pcr
-etf_share  exchange_etf_share(沪) + szse_etf_share(深)   ← 零 Tushare
+etf_share  exchange_etf_share(沪) + szse_etf_share(深)
 etf_quote  sina_quote
 bond10y    em_bond10y
 ```
 
 深交所被限流时，深市那行当日份额取不到 → 记为缺口，下次运行由
 `szse_etf_share_range` 补（若同时被限流，缺口留到配额恢复后自动补齐）。
-Tushare 不会自动介入，除非人工设了 `IV_ALLOW_TUSHARE=1`。
-
 **限频注意事项（历史坑）**
 
-- `opt_basic` 总量 >23 万行，必须分页到 offset≈400000 才完整，
-  否则历史合约缺失、PCR 只剩近 1 年。已缓存到 `data/opt_contracts.json`。
-- `opt_daily` 限 200 次/分钟，必须用 `exchange + start_date/end_date` 区间查询
-  **按月切片**，不能按 `trade_date` 逐日拉。
-
----
-
-## 三、Tushare 的定位（人工指令工具，非周期任务）
-
-设计动机与历史分段图见 [ARCHITECTURE.md](ARCHITECTURE.md) 第二节。
-
-**它不再是「每周任务」**：2015–2017 段早已写定、永不变化；日常增量公开源已覆盖；
-深市份额的缺口也有深交所区间报表回补。所以只在人工判断需要时才跑：
-
-```bash
-$PY sync_tushare.py          # 人工触发（例如怀疑历史库有洞、或想做一次权威校准）
-```
-
-`sync_tushare.py` 参数：
-
-- `HIST_FLOOR = "20150105"`：历史下界；
-- `TAIL_DAYS = 45`：尾部窗口，覆盖近 6 周（足够消化假期与临时停机）；
-- `--full`：从 `HIST_FLOOR` 全量重拉（慎用，耗积分）；
-- `--with-pcr`：连带同步期权 PCR（默认跳过，因为交易所源已足够好）；
-- `--asof YYYYMMDD`：校准到指定日期。
+- 期权合约明细数据量大（>23 万行），建库时已一次性缓存到 `data/opt_contracts.json`，
+  日常运行不重拉。
 
 ---
 
@@ -304,14 +272,14 @@ $PY sync_tushare.py          # 人工触发（例如怀疑历史库有洞、或�
 
 深交所「交易持仓汇总统计」页面（`CATALOGID=option_jycchztj`）披露的未平仓量，页脚注明为
 **对冲后单边**（`kzccsl` / `kdccsl`）；而上交所日统计（`LEAVES_CALL_QTY` / `LEAVES_PUT_QTY`）
-与 Tushare `opt_daily` 均为**双边加总**口径。两市定义不同，数值不可直接互比。
+库内 2026-09-08 前的历史值均为**双边加总**口径。两市定义不同，数值不可直接互比。
 
 **现行做法（2026-10-21 起）**：深市持仓量**直接落库页面原值，不做任何换算**，
 报告里创业板指的持仓量、PCR 与深交所官网页面逐位对得上，便于人工复核。
 
 - 交易日 2026-09-09 起的深市行已按此还原（72 行，3 个深市标的），
   校验：159915 `2026-10-20` → 1,444,503 / 643,044，PCR 0.4452，与页面「认沽认购未平仓比率 44.52%」一致。
-- 2026-09-08 及更早：Tushare `opt_daily` 双边原值（历史不改）。
+- 2026-09-08 及更早：双边口径原值（历史不改）。
 - **已知断点**：2026-09-08 → 09-09 之间深市持仓量约有 −5%~−8% 的台阶，
   创业板指 PCR 历史分位**跨越该断点**，仅作相对参照。报告页脚与情绪面注释已注明。
 
@@ -324,7 +292,7 @@ $PY sync_tushare.py          # 人工触发（例如怀疑历史库有洞、或�
 | 2025-09-22 | 817,656 / 1,133,523 | 920,816 / 1,260,125 | 1.1262 / 1.1117 |
 
 即真实比值在 1.03~1.13 间漂移，固定常数带来 ±4% 持仓量误差、PCR 2~4pp 误差；
-且该做法使 2026-09-09~10-20 的行既非 Tushare 原值、也非官方页面值（第三种口径），
+且该做法使 2026-09-09~10-20 的行既非历史双边原值、也非官方页面值（第三种口径），
 故整体撤回。成交量（`kzjysl`/`kdjysl`）两市定义一致，与页面逐位相同，从未受影响。
 
 ### 期权 PCR（2022-10 至 2026-10，4720 个共同行）
@@ -383,7 +351,7 @@ python tools/verify_sources.py --csv
 | `valuation` | 前一日值 | ±15% | 单日跳变，超了基本是取数出错 |
 | `valuation` | 中证静态 PE | ±3%（仅沪深300/上证50） | 数量级 sanity check |
 | `quote` | 东财（仅当日） | ±0.2% | 两个独立源应当逐位相同 |
-| `option_pcr` | Tushare 同日 / 前一日 | ±10% | 允许到期日口径差异 |
+| `option_pcr` | 库内同日 / 前一日存值 | ±10% | 允许到期日口径差异 |
 
 > ⚠ 校验时**不要拿 raw.json 当日的值做参照**——那本来就是主源写的，
 > 会得到一个恒为 0.00% 的无意义自比。这是本工具最初版本的 bug。
@@ -415,7 +383,7 @@ python tools/verify_sources.py --csv
 
 - 报告：`reports/index_val_report_<ASOF>.html`（模板 `scripts/template2.html`）
 - 组装：`scripts/gen2.py`（读全部中间文件 → 组成 `work/data2.json` 的 `DATA` → 注入模板）
-- 入口：`run_daily.py`（v2 管线，全程零 Tushare；Tushare 默认禁用）
+- 入口：`run_daily.py`（v2 管线，只走公开源）
 
 ---
 
@@ -425,9 +393,9 @@ python tools/verify_sources.py --csv
 | ------------------ | ------------------------------ | ------------------------------------------------------------------------------ | ----------------------- | --------------------------------------------------- |
 | 核心指标速览             | 五指数 PE/PB/分位/估值状态卡             | `work/metrics.json`                                                            | `process.py`            | 东财成分股聚合                                             |
 | 一、基本面 · 估值表        | PE/PB/隐含ROE/股债性价比/总市值/区间涨跌 + 点位分位与近10年点位中位数 | `work/metrics.json` + `data/close_history.json`                             | `process.py`            | 东财成分股聚合 + 10Y（东财，中债）+ 东财 K 线 close                                 |
-| 一、基本面 · PE/PB Band | 估值带：收盘价 + 窗口均值±1σ/±2σ×当期EPS/BPS（指数/3·5·10年/PE·PB 可切换） | `data/raw.json` + `data/close_history.json` | `gen2.py`(band_data) | 东财聚合 PE/PB + 东财 K 线 close（2015~2019 为 Tushare 一次性回填） |
+| 一、基本面 · PE/PB Band | 估值带：收盘价 + 窗口均值±1σ/±2σ×当期EPS/BPS（指数/3·5·10年/PE·PB 可切换） | `data/raw.json` + `data/close_history.json` | `gen2.py`(band_data) | 东财聚合 PE/PB + 东财 K 线 close（2015~2019 为一次性回填的历史段） |
 | 一、基本面 · ERP 子章节 | 交互式走势图（五指数×窗口可切换）+ 沪深300 读数条（固定日频口径） | `data/yield10y_history.json` + `data/raw.json` | `gen2.py`(erp_weekly) | 东财 `RPTA_WEB_TREASURYYIELD`（中债）+ 东财聚合 PE |
-| 二、资金面              | ETF 份额 5/20/60 日变化、YTD（表格）+ 份额走势图（全部/近三年/近一年可切换） | `work/shares.json`、`data/etf_raw.json` | `proc2.py` + `gen2.py`(shareAll) | 上交所/深交所官方快照（深市兜底 Tushare） |
+| 二、资金面              | ETF 份额 5/20/60 日变化、YTD（表格）+ 份额走势图（全部/近三年/近一年可切换） | `work/shares.json`、`data/etf_raw.json` | `proc2.py` + `gen2.py`(shareAll) | 上交所/深交所官方快照 |
 | 三、情绪面              | 期权持仓 PCR 及历史分位 + PCR 走势图（窗口可切换，分位固定全样本）；股指期货当月基差走势（IH/IF/IC/IM，品种×窗口可切换）+ 读数条 | `work/pcr.json`、`data/pcr_raw.csv`、`data/futures_kline.json` | `proc2.py` + `gen2.py`(pcrAll/futAll) | 上交所/深交所期权日报官方接口 + 新浪期货 K 线 + 东财 K 线（中证1000 现货） |
 | 四、技术面              | 近 60 日 K 线 + MA5/20/60/120/250 | `work/tech.json`                                                               | `tech.py`               | 新浪财经 K 线（经 raw.json daily）                          |
 | 五、四维信号矩阵           | 四维信号标签汇总                       | 上述全部                                                                           | `gen2.py`（signal 函数） | 同上四维                                                |
@@ -444,7 +412,7 @@ python tools/verify_sources.py --csv
 其后还有两个**补步骤（均非致命）**：指数收盘价历史增量（东财 K 线，`fetch_close_hist.py`）、
 股指期货当月连续 + 中证1000 现货（新浪/东财，`fetch_futures.py`，v2.6.5 起）。
 
-每个域的**优先级链、日常实际源、历史下界、Tushare 参与度**，唯一权威表在
+每个域的**优先级链、日常实际源、历史下界**，唯一权威表在
 本文件**第一部分第一节「总览」**，此处不重复。
 每次运行"实际用了哪个源"记录在 `work/provenance.json`（`provider` + `fallback_from` 字段）。
 
@@ -465,7 +433,7 @@ python tools/verify_sources.py --csv
   形成短期位置 vs 长期位置的对照——卡上标注「PE 5年 / 点位 5年」，勿与表格 10 年口径混淆。
 - **来源**：`basic` 段 = 东财 `RPT_INDEX_COMPONENT`（成分股，缓存 7 天）
   - `RPT_VALUEANALYSIS_DET`（全市场估值，单次 pageSize=6000），  
-    按 `PE=Σmv/Σ(mv/PE_i)`（总市值加权、含亏损股）聚合，与 Tushare 存值误差 0.17%。
+    按 `PE=Σmv/Σ(mv/PE_i)`（总市值加权、含亏损股）聚合，与库内历史存值误差 0.17%。
 
 ### 一、基本面：估值分析
 
@@ -488,8 +456,8 @@ python tools/verify_sources.py --csv
 - `gen2.py` 的 `band_data()`：每 ISO 周取最后一个交易日（周采样，10 年约 521 点/指数），
   注入 `DATA.band`（`{指数: {dates, close, pe, pb}}`）；
   统计与画线在前端完成。
-- **收盘价**：`data/close_history.json`（2015~2019 段 Tushare `index_daily`
-  一次性回填（2026-10-21，仅此一次），其后东财 K 线增量；科创50 自 2020-07-24）。
+- **收盘价**：`data/close_history.json`（2015~2019 段为一次性回填的历史段，
+  其后东财 K 线增量；科创50 自 2020-07-24）。
 - **交互**：默认沪深300 / 5 年窗口 / PE Band；指数（5 个）、窗口（3/5/10 年）、
   指标（PE/PB）三组按钮切换；窗口数据不足 80%（如科创50 × 10 年）自动回退
   "上市以来"并在图下注明。
@@ -522,7 +490,7 @@ python tools/verify_sources.py --csv
     按 `STAT_DATE` 取当日全市场名单（**不是全历史**，一次只给一日，可回查任意历史日期）；
   - 深市 159915：深交所 `CATALOGID=1105&txtkey1=159915` 当日快照（`dqgm` 万份）；
     **只有当日一行**，靠每日运行追赶；漏掉的日子由深交所「基金规模」区间报表
-    （`CATALOGID=scsj_fund_jjgm`，一次可查 6 个月）自动回补，**不需要 Tushare**；
+    （`CATALOGID=scsj_fund_jjgm`，一次可查 6 个月）自动回补；
     沪市漏日由管线按 `STAT_DATE` 逐日回查补齐；两市都不需要人工干预；
   - ETF 现价：新浪行情。
 - **坑**：深交所快照取值日一律用 `min(metadata.subname, end)`，列头括号印的是前一天会误导；  
@@ -550,8 +518,8 @@ python tools/verify_sources.py --csv
   样本自 2022-10-10（科创50 自 2023-06-05）。
 - **两市持仓量口径不同**（v2.5.0）：沪市 `LEAVES_*_QTY` 为双边加总；深市 `kzccsl`/`kdccsl` 为
   对冲后单边，**直接落库原值、不做换算**（与深交所页面逐位一致）。2026-09-09 起为单边、
-  更早为 Tushare 双边，创业板指 PCR 历史分位跨该断点，页面已注明。
-- **已知口径差**：到期日（周三）交易所报结算后持仓、Tushare 报收盘持仓，  
+  更早为双边口径，创业板指 PCR 历史分位跨该断点，页面已注明。
+- **已知口径差**：到期日（周三）交易所报结算后持仓，与收盘持仓口径不同，  
   `KNOWN_OI_DIVERGENCE` 已在 `ivdata/providers/exchange.py` 记录离群日。
 
 ### 三、情绪面（续）：股指期货当月基差（v2.6.5）
@@ -642,12 +610,7 @@ python tools/verify_sources.py --csv
 1. **先看溯源**：`work/provenance.json` 里该域当次实际用的 provider；
 2. **对中间文件**：按〇节速查表找到对应 work/*.json，确认报告值 == 中间值（排除 gen2 组装错误）；
 3. **对原始源**：按本文件第一部分的接口重发一次请求比对；
-4. **交叉校验工具**：
-   ```bash
-   python tools/verify_sources.py --asof YYYYMMDD --csv   # 估值/行情/PCR 多源对照
-   python tools/compare_tushare_2026.py                    # 2026 全年东财 vs Tushare 存值（只读）
-   ```
-5. **第三方官方对照基准**（2026-10-21 实测口径）：
+4. **第三方官方对照基准**（2026-10-21 实测口径）：
    - 中证指数官网 `indexCsiDsPe`：仅 300/50 的静态 PE（字段名叫 peg），±3% 容差；
    - 国证官网 `GET www.cnindex.com.cn/index/indexList?channelCode=-1&rows=2000&pageNum=1`：  
      覆盖创业板指 399006 的 peStatic/peDynamic/pb **当日快照**。PB 与我们差 0.21%（一致✓）；  

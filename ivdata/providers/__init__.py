@@ -8,8 +8,6 @@ from .csi import CsiQuote, CsiValuation
 from .em import EmQuote, EmValuation, EmBond10y
 from .exchange import (ExchangePcr, ExchangeEtfShare, SzseEtfShare,
                        SzseEtfShareRange, SseCalendar)
-from .tushare import (TushareQuote, TushareValuation, TusharePcr,
-                      TushareEtfShare, TushareEtfQuote)
 from .local import LocalCalendar
 
 PROVIDERS = [
@@ -29,12 +27,6 @@ PROVIDERS = [
     # 放进链里会「成功」地写坏数据，因此只注册供 tools/verify_sources.py 调用。
     CsiValuation,
     CsiQuote,
-    # 兜底
-    TushareQuote,
-    TushareValuation,
-    TusharePcr,
-    TushareEtfShare,
-    TushareEtfQuote,
 ]
 
 __all__ = ["PROVIDERS"]

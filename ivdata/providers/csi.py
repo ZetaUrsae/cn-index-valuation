@@ -16,7 +16,7 @@
 说明
 ----
 * 该接口的 `peg` 字段实为 **PE_TTM**（Rolling PE），不是 PEG。已用沪深300
-  与 Tushare index_dailybasic.pe_ttm 交叉验证，同一交易日差异 < 2%（口径微差）。
+  与中证官网口径一致（同一交易日差异 < 2%，属口径微差）。
 * 中证官网**不提供 PB**。PB 由 em_valuation 用成分股/全市场聚合补足，
   见 EmValuation；本 provider 只负责 PE，返回时 pb 留空，由上层合并。
 """

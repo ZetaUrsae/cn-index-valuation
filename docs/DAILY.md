@@ -73,9 +73,8 @@ $NODE = C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
   或数据源延迟时触发，管线在此停手、不出报告，防止旧数据被标成新日期。
   处理：人工确认该日是否交易——真休市就不用管，次日 `--check` 自然 SKIP；
   是数据延迟就晚些重跑。**不要**改 `--asof` 凑数或手工改库。
-- **主取数环节连续两次失败 → 停手**，不要切 `scripts/run_weekly.py`：那是全 Tushare 管线，
-  `fetch.py` 会把 Tushare 数值写进 `data/raw.json` 历史库，违反"日常不碰 Tushare"。
-  改为把失败环节、报错原文、`work/provenance.json` 里 `ok=false` 的记录写进总结，等人工指令。
+- **主取数环节连续两次失败 → 停手**：把失败环节、报错原文、`work/provenance.json`
+  里 `ok=false` 的记录写进总结，等人工指令。
 - **标 `[补]` 的三个非致命步骤失败，不停手，照常出报告**：
   `10Y 国债补齐` / `指数收盘价历史（close_hist）` / `股指期货（futures）`。
   它们失败时脚本只告警、保留原缓存，报告仍会生成。
@@ -95,7 +94,6 @@ $NODE = C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
    明显偏小（<20 万）说明 Band、ERP 或 PCR/份额历史序列丢了 → 按 RUNBOOK 5.1 排查。
 2. `work/provenance.json`：`etf_share` 域正常只有 `exchange_etf_share`（沪市 4 只）+
    `szse_etf_share`（深市 1 只）；补过缺口当天会多一条 `szse_etf_share_range`，属正常；
-   出现 `tushare_*` 才是异常。
 3. 日志有 `仍有 N 日未补` = 深交所被限流，下次运行自动补齐，总结里提一句即可。
 4. **内联 JS 运行时校验（v2.6.2 起必跑，改过模板/gen2 后更必跑）**：
    `cd D:/QClaw/Stock/index_valuation && "$NODE" tools/js_runtime_check.js reports/<报告>.html`。
@@ -105,10 +103,8 @@ $NODE = C:/Users/zky12/.workbuddy/binaries/node/versions/22.22.2-6/node.exe
 
 ## 六、这些默认值由代码保证，这里只备查
 
-- **Tushare 不参与日常取数**：`ivdata/config.py` 里 `allow_tushare` 默认 False，
-  只有 `IV_ALLOW_TUSHARE=1` 才进降级链；`sync_tushare.py` 自行打开，属人工指令入口。
-  v2.5.7 起 `scripts/cfg.py` 的 ASOF 推导也改走上交所日历——**整条日常链路
-  （取数 + 加工）零 Tushare 请求**（此前 `import cfg` 会隐性调一次 trade_cal）。
+- **只走公开源**：全部数据域均为公开接口，不依赖任何需要 token 的收费数据源；
+  `scripts/cfg.py` 的 ASOF 推导也走上交所日历。
 - **只取增量**：`OVERLAP_BY_DOMAIN` 各域默认 1 天；不要设 `IV_OVERLAP`
   （放大回看窗口会重拉历史，还可能打光深交所配额）。正常一次 21~30 发请求 / 10~20 秒
   （新交易日 close_hist +5 发、fetch_futures +9~13 发，已最新则 0 发），

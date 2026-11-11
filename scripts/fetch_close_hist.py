@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
-"""指数收盘价历史 → data/close_history.json（Tushare 一次性回填 + 东财日常增量）。
+"""指数收盘价历史 → data/close_history.json（东财日常增量）。
 
 用途：PE/PB Band 图（v2.5.9）需要 2015 年以来的指数收盘价，
 用于换算当期 EPS(TTM)=close/PE(TTM)、BPS=close/PB，并把 band 通道画在价格空间。
-raw.json 的 daily 只有 2019-12 起的新浪增量，不够 10 年窗口，故单独维护本文件。
+raw.json 的 daily 只有 2019-12 起的新浪增量，不够 10 年窗口，故单独维护本文件；
+2015~2019 的历史段由建库时的一次性回填写定，已冻结、不再重取。
 
-两种模式
---------
-1. 默认（日常增量）：东财 K 线接口 push2his（klt=101 日线、fqt=0）。
-   按「库内最后一天」判断：已最新则 0 请求，否则 1 发/指数。非致命。
-2. ``--seed-tushare``（一次性历史回填，用户 2026-10-21 批准仅此一次）：
-   Tushare index_daily 从 20150105 起补齐全部缺失日。
-   沿用 sync_tushare.py 惯例：自设 IV_ALLOW_TUSHARE=1，人工指令工具。
+模式（日常增量）：东财 K 线接口 push2his（klt=101 日线、fqt=0），
+按「库内最后一天」判断：已最新则 0 请求，否则 1 发/指数。非致命。
 
-写入规则（两种模式一致）：只新增缺失日期，已有历史一律不覆盖；
+写入规则：只新增缺失日期，已有历史一律不覆盖；
 最近 3 天允许覆盖（当晚修正）。写前 tmp + os.replace 原子替换。
 """
 import datetime
@@ -82,25 +78,6 @@ def _merge(hist: dict, code: str, pairs) -> int:
     hist[code] = {k: blob[k] for k in sorted(blob)}
     return added
 
-
-def seed_tushare(hist: dict, asof: str) -> int:
-    """一次性历史回填：Tushare index_daily（人工批准，仅此一次）。"""
-    import cfg
-    pro = cfg.pro_api()
-    total = 0
-    for code in SECID:
-        df = pro.index_daily(ts_code=code, start_date=HIST_FLOOR, end_date=asof,
-                             fields="trade_date,close")
-        pairs = []
-        for _, r in df.iterrows():
-            d = str(r["trade_date"])
-            pairs.append(("%s-%s-%s" % (d[:4], d[4:6], d[6:]), r["close"]))
-        added = _merge(hist, code, pairs)
-        total += added
-        ks = sorted(hist[code])
-        print("  [seed-tushare] %s +%d → %s ~ %s（%d 日）"
-              % (code, added, ks[0], ks[-1], len(ks)))
-    return total
 
 
 def _fetch_em(s, secid):
@@ -185,20 +162,12 @@ def incr_em(hist: dict, asof: str) -> int:
 
 
 def main() -> None:
-    seed = "--seed-tushare" in sys.argv
-    if seed:
-        os.environ.setdefault("IV_ALLOW_TUSHARE", "1")   # 沿用 sync_tushare 惯例
     asof = (os.environ.get("ASOF") or "")[:8]
     hist = _load()
-    if seed:
-        if not asof:
-            raise SystemExit("!! --seed-tushare 需要指定 ASOF=YYYYMMDD（回填截至日）")
-        n = seed_tushare(hist, asof)
-    else:
-        n = incr_em(hist, asof)
+    n = incr_em(hist, asof)
     if n:
         _save(hist)
-    print("  close_hist 完成：本次共新增 %d 条%s" % (n, "（Tushare 一次性回填）" if seed else ""))
+    print("  close_hist 完成：本次共新增 %d 条" % n)
 
 
 if __name__ == "__main__":

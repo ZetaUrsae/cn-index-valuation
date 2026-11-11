@@ -19,11 +19,11 @@ data/etf_raw.json {shares, fdaily, main}     etf_share + etf_quote
 
 单位换算（踩过的坑，必须记住）
 ------------------------------
-* 新浪 K 线 ``volume`` 单位是**股**，Tushare ``vol`` 是**手**（1 手 = 100 股），
-  写库前除以 100，否则量比会差 100 倍。
+* 新浪 K 线 ``volume`` 单位是**股**，写库统一折算成**手**（除以 100），
+  否则与历史库口径差 100 倍。
 * 新浪没有成交额，``amount`` 只能留空 → 用「收盘价 × 成交量」估算，
   仅 ETF 表用到（proc2.py 只取末值展示），不影响任何比值类指标。
-* 东财返回的市值单位是**元**，Tushare ``total_mv`` 是**万元**，除以 1e4。
+* 东财返回的市值单位是**元**，与历史库口径一致，不要除以 1e4。
 """
 from __future__ import annotations
 
@@ -191,9 +191,9 @@ class Pipeline:
 
         **写库策略（方案 C）**
         --------------------
-        1. Tushare 已有历史（2015 起）视为权威，**不回改**；
-        2. 东财只补 ``tushare_last_date`` 之后的增量（每周 Tushare 补一次会前移这条线）；
-        3. 若某天东财已写、随后 Tushare 补到同一天，以 Tushare 覆盖（口径统一到官方）。
+        1. 库内已有历史（2015 起）视为权威，**不回改**；
+        2. 东财只补库内最后一天之后的增量（同一天重复取会被合并去重）；
+        3. 合并时同一天以新取的数据为准（口径统一）。
         """
         raw = load_json(os.path.join(DATA, "raw.json")) or {}
         total = 0
@@ -360,13 +360,13 @@ class Pipeline:
 
         # 限流保护：缺口超过 120 天（首次建库 / 长期停机）时只补最近 120 天。
         # 区间报表 20 行/页，120 天 ≈ 9 页已是单次可接受的上限；更早的缺口
-        # 交给人工跑 sync_tushare.py，避免把深交所的请求配额一次打光。
+        # 不自动回补，避免把深交所的请求配额一次打光。
         floor = _shift(self.asof, days=-120)
         truncated = [d for d in missing if d < floor]
         if truncated:
             self._say(f"  [etf_share] {code} 缺口 {len(missing)} 日，其中 "
                       f"{len(truncated)} 日早于 {floor}，本次只补最近 120 天"
-                      f"（更早的请人工跑 sync_tushare.py）")
+                      f"（更早的不自动回补）")
             missing = [d for d in missing if d >= floor]
             if not missing:
                 return []
@@ -447,10 +447,10 @@ class Pipeline:
 # ---------------------------------------------------------------- 归一行
 
 def _norm_quote(r: Dict[str, Any]) -> Dict[str, Any]:
-    """统一成 Tushare index_daily 的字段与单位。"""
+    """统一成库内历史数据的字段与单位。"""
     close = r.get("close")
     vol = r.get("vol")
-    # 新浪给的是「股」，Tushare 给「手」
+    # 新浪给的是「股」，库内口径是「手」
     if vol is not None:
         vol = round(vol / 100.0, 2)
     amount = r.get("amount")

@@ -54,7 +54,7 @@ def status(p):
     return ("高估", "s5")
 
 
-# close 历史：fetch_close_hist.py 维护（2015 起 Tushare 一次性回填 + 东财增量），
+# close 历史：fetch_close_hist.py 维护（2015~2019 历史段一次性回填写定 + 东财增量），
 # 供 PE/PB Band 换算当期 EPS(TTM)=close/PE、BPS=close/PB 并画价格通道
 CLOSE_HIST = json.load(open(BASE + "data/close_history.json", encoding="utf-8"))
 

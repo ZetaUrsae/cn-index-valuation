@@ -118,7 +118,7 @@
       <span>数据日期：<b id="asof">—</b>（收盘）</span>
       <span>估值口径：<b>PE(TTM) / PB(LF)</b></span>
       <span>PCR 样本：<b id="pcrwin">—</b></span>
-      <span>数据来源：<b>Tushare Pro（指数估值＝中证指数口径；期权＝上交所/深交所行情）</b></span>
+      <span>数据来源：<b>公开数据接口（指数估值＝中证指数口径；期权＝上交所/深交所行情）</b></span>
     </div>
   </div>
 </header>
@@ -288,8 +288,8 @@
 
   <footer>
     <b>数据来源与口径</b><br>
-    · <b>指数估值与行情</b>（PE-TTM / PE-静态 / PB-LF / 总市值 / 涨跌）：Tushare Pro <code>index_dailybasic</code>、<code>index_daily</code>，数据日期 <span id="f1">—</span>；该口径与中证指数公司一致（已抽样交叉校验）。<br>
-    · <b>ETF 与期权</b>：Tushare Pro <code>fund_basic</code> / <code>fund_daily</code> / <code>fund_share</code> / <code>opt_basic</code> / <code>opt_daily</code>；期权持仓与成交按各指数主要 ETF 期权逐日汇总，样本区间 2022-10-10 起（科创50ETF 期权自 2023-06-05 挂牌）。<br>
+    · <b>指数估值与行情</b>（PE-TTM / PE-静态 / PB-LF / 总市值 / 涨跌）：公开数据接口 <code>index_dailybasic</code>、<code>index_daily</code>，数据日期 <span id="f1">—</span>；该口径与中证指数公司一致（已抽样交叉校验）。<br>
+    · <b>ETF 与期权</b>：公开数据接口 <code>fund_basic</code> / <code>fund_daily</code> / <code>fund_share</code> / <code>opt_basic</code> / <code>opt_daily</code>；期权持仓与成交按各指数主要 ETF 期权逐日汇总，样本区间 2022-10-10 起（科创50ETF 期权自 2023-06-05 挂牌）。<br>
     · <b>股息率</b>：中证指数公司口径估值数据，数据日期 <span id="divasof2">—</span>；<b>10年期国债收益率</b>：中债国债到期收益率（中央结算公司），数据日期 <span id="bonddate">—</span>（非一手来源汇总，建议以官网复核）。<br>
     · <b>历史分位</b>：基于 2015-01 至 <span id="f2">—</span> 日频 PE(TTM)/PB 序列计算（科创50 自 2020-07 起）；PCR 分位基于 2022-10-10（科创50 为 2023-06-05）以来的日频序列。<br>
     · <b>机构观点</b>：整理自券商/公募四季度策略与财经媒体报道，属非一手来源，需核实原文。

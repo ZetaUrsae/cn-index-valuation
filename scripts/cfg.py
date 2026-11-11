@@ -15,8 +15,6 @@ WORK = BASE + "work/"        # 每次运行生成的中间产物（可清理，�
 REPORTS = BASE + "reports/"  # 日报 HTML 产出
 for _d in (DATA, WORK, REPORTS, REPORTS + "archive"):
     os.makedirs(_d, exist_ok=True)
-SKILL = r"C:/Users/zky12/.workbuddy/skills/tushare-data/scripts"
-
 
 def _report_tag() -> str:
     """试运行标记：IV_REPORT_TAG=test → 报告名 index_val_report_<ASOF>_test.html。
@@ -39,15 +37,6 @@ def report_path(asof: str, tag: str = "") -> str:
     return REPORTS + "index_val_report_%s%s.html" % (asof, tag)
 
 
-def pro_api():
-    """返回 Tushare pro_api 实例"""
-    if SKILL not in sys.path:
-        sys.path.insert(0, SKILL)
-    from get_token import get_token
-    import tushare as ts
-    return ts.pro_api(get_token())
-
-
 def shift(ymd, days=0, months=0, years=0):
     """在 YYYYMMDD 基础上平移天/月/年，返回 YYYYMMDD"""
     y, m, d = int(ymd[:4]), int(ymd[4:6]), int(ymd[6:8])
@@ -68,10 +57,7 @@ def fmt(ymd):
 def prev_trading_day():
     """最近一个已开市交易日；ASOF 环境变量优先。
 
-    v2.5.7 起改走上交所日历（与 ivdata 主管线同源），**不再调用 Tushare**——
-    旧实现 `pro.trade_cal` 导致每次 import cfg 都发一次 waditu 请求，
-    违反"日常零 Tushare"（run_daily 的加工子进程因带了 ASOF 环境变量才一直没暴露）。
-    日历不可用时退化为工作日近似并告警，不抛异常。
+    走上交所日历（与 ivdata 主管线同源）。日历不可用时退化为工作日近似并告警，不抛异常。
     """
     env = os.environ.get("ASOF", "").strip()
     if env:

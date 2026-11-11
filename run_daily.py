@@ -1,17 +1,11 @@
 # -*- coding: utf-8 -*-
 """run_daily.py —— 宽基指数估值日报 · v2 管线（主入口）。
 
-与旧 run_weekly.py 的区别
---------------------------
-==================== ============================ ==========================
-                     run_weekly.py（旧，保留备用）  run_daily.py（v2，日常）
-==================== ============================ ==========================
-取数来源              Tushare（每步都调）            新浪 / 东财 / 交易所官方
-Tushare 调用量        ~15 次/天，1 万+ 行           0 次/天（每周 sync_tushare）
-降级能力              无，任一接口挂就断             每个域有优先级链，自动降级
-溯源                  无                             work/provenance.json
-产物                  完全一致                      完全一致（下游脚本零改动）
-==================== ============================ ==========================
+取数特点
+--------
+* 数据源全部为公开接口：新浪 / 东财 / 上交所 / 深交所 / 中证官网；
+* 每个数据域配 provider 优先级链，前一个源失败自动降级（见 ivdata/config.py）；
+* 每次运行记录溯源（work/provenance.json），报告与排错都能查到数据出处。
 
 用法
 ----
@@ -29,9 +23,6 @@ Tushare 调用量        ~15 次/天，1 万+ 行           0 次/天（每周 s
 
     # 强制某域走某源（排障用）
     IV_FORCE="valuation=em_valuation" python run_daily.py
-
-    # 临时允许 Tushare 进入降级链（仅调试用；默认全程不碰 Tushare）
-    IV_ALLOW_TUSHARE=1 python run_daily.py
 
     # 只取数不生成报告（调试）
     python run_daily.py --fetch-only
@@ -156,7 +147,6 @@ def main() -> int:
     if args.asof:
         os.environ["ASOF"] = args.asof
 
-    from ivdata.config import SETTINGS
     from ivdata.pipeline import Pipeline
     from ivdata import http
 
@@ -187,13 +177,12 @@ def main() -> int:
     print("参考交易日 ASOF = %s" % asof)
     if os.environ.get("IV_REPORT_TAG"):
         print("试运行标记 = %s（报告另存，不影响定时任务判重）" % os.environ["IV_REPORT_TAG"])
-    print("Tushare = %s" % ("允许（人工开启）" if SETTINGS.allow_tushare else "禁用（默认）"))
     print("=" * 68, flush=True)
 
     failed: list = []
 
     # ---------- 1. 取数 ----------
-    print("\n[1/4] 指数行情（新浪 → 中证 → 东财 → Tushare）", flush=True)
+    print("\n[1/4] 指数行情（新浪 → 中证 → 东财）", flush=True)
     try:
         p.sync_quotes()
     except Exception as e:                       # noqa: BLE001
@@ -201,14 +190,14 @@ def main() -> int:
         print("  !! 行情取数异常: %s" % e, flush=True)
     _verify_quotes(asof)        # 临时休市/数据延迟时在此停手，防止旧数据标成新日期
 
-    print("\n[2/4] 指数估值（东财成分股加权 → 中证 → Tushare）", flush=True)
+    print("\n[2/4] 指数估值（东财成分股加权）", flush=True)
     try:
         p.sync_valuations()
     except Exception as e:                       # noqa: BLE001
         failed.append("valuations")
         print("  !! 估值取数异常: %s" % e, flush=True)
 
-    print("\n[3/4] 期权 PCR（上交所/深交所官方 → Tushare）", flush=True)
+    print("\n[3/4] 期权 PCR（上交所/深交所官方）", flush=True)
     try:
         p.sync_pcr()
     except Exception as e:                       # noqa: BLE001

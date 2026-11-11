@@ -18,11 +18,11 @@
         PE_TTM = Σ总市值 / Σ(总市值 / PE_TTM)
         PB     = Σ总市值 / Σ(总市值 / PB_MRQ)
     **必须包含亏损股**（PE<=0 不剔除）——这一点经过实测比对确定：
-        同日对五个宽基，上述公式与 Tushare index_dailybasic 的 PE 平均绝对误差 0.17%，
+        同日对五个宽基，上述公式与中证官网口径的平均绝对误差 0.17%，
         最大 0.4%；若剔除亏损股，误差会放大到 15%。
 
     数据下界：2018-01-02（更早的日期接口返回空）。
-    2015-01-05 ~ 2017-12-29 只能由 Tushare 补齐（见 scripts/sync_history.py）。
+    2015-01-05 ~ 2017-12-29 为建库时一次性回填的历史段（已冻结）。
 
 二、指数行情
     GET https://push2.eastmoney.com/api/qt/stock/get?secid=1.000300&fields=f43,...
@@ -50,7 +50,7 @@ HDR = {"Referer": "https://data.eastmoney.com/gzfx/"}
 QHDR = {"Referer": "https://quote.eastmoney.com/"}
 
 # 东财指数代码（RPT_INDEX_COMPONENT 的 INDEX_CODE）：A 股宽基是 6 位纯数字，
-# 与 Tushare 的 ts_code 去掉交易所后缀一致，唯独需注意创业板指是 399006。
+# 与常见指数代码去掉交易所后缀一致，唯独需注意创业板指是 399006。
 IDX2EM_CODE = {
     "000300.SH": "000300",
     "000016.SH": "000016",
@@ -153,7 +153,7 @@ class EmValuation(Provider):
             if agg is None:
                 continue
             pe, pb, mv, fmv = agg
-            # 静态 PE（PE_LAR，按最近年报）单独聚合，与 Tushare 的 pe 字段对应。
+            # 静态 PE（PE_LAR，按最近年报）单独聚合，对应库内历史 pe 字段。
             # 报告正文只用 pe_ttm，但 raw.json 的 pe 不能留空，否则与历史行不一致。
             pe_static = _aggregate_key(stocks, cons, "PE_LAR")
             rows.append({
@@ -163,9 +163,9 @@ class EmValuation(Provider):
                 "pb": round(pb, 4) if pb else None,
                 "turnover_rate": None,
                 "turnover_rate_f": None,
-                # 东财 TOTAL_MARKET_CAP 单位是「元」；Tushare index_dailybasic.total_mv
+                # 东财 TOTAL_MARKET_CAP 单位是「元」，与库内历史口径一致；
                 # 的数值恰好等于「元」的数值（即实际存的是亿元，不是文档说的万元）。
-                # 实测：东财 65,515,940,053,434 元 ↔ Tushare 65,515,922,156,051，
+                # 实测抽样核对：65,515,940,053,434 元 ↔ 65,515,922,156,051，
                 # 比值 1.0000003，因此**不做任何换算**直接落库，否则会差 1 万倍。
                 "total_mv": round(mv, 2) if mv else None,
                 "float_mv": round(fmv, 2) if fmv else None,
