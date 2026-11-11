@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import json, math, os
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
 raw = json.load(open(BASE + "data/raw.json", encoding="utf-8"))
 order = ["000300.SH","000016.SH","000905.SH","399006.SZ","000688.SH"]
 

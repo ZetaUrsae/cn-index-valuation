@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import json, math, os
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
 import numpy as np
 import pandas as pd
 
