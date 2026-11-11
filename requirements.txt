@@ -1,0 +1,4 @@
+# 宽基指数估值日报管线依赖（本地与 GitHub Actions 共用）
+requests>=2.31
+pandas>=3.0
+numpy>=2.0

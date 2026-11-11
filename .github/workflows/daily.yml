@@ -1,0 +1,59 @@
+# 宽基指数估值日报 · GitHub Actions 并行观察线
+#
+# 角色：只观察，不接管。main 由本地定时任务（北京 06:00）权威驱动；
+# 本 workflow 在云端独立跑一遍同样管线，产物推到 actions 分支 + 报告存 artifact，
+# 与本地同日产出做交叉对照。actions 分支永不合并回 main。
+#
+# 时区换算：UTC 22:00 = 北京时间次日 06:00；cron 用 UTC 周日至周四（0-4），
+# 对应北京周一至周五的工作日。GitHub cron 有 5~30 分钟抖动，属正常。
+name: Daily observe run
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 22 * * 0-4'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-observe
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout main (shared baseline)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily pipeline (--tag gh)
+        run: python run_daily.py --tag gh
+
+      - name: Push run state to actions branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B actions
+          git add -A data reports
+          git commit -m "GH observe run $(date -u +%Y%m%d)"
+          git push origin actions --force
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gh-report-${{ github.run_id }}
+          path: reports/index_val_report_*_gh.html
+          retention-days: 90
+          if-no-files-found: warn
