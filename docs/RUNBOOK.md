@@ -290,6 +290,21 @@ ks=sorted(d); print('末5:', [(k,d[k]) for k in ks[-5:]])
 `listed_contracts` 季月游标不前进导致空转，被误判为"新浪挂起"），
 用 `python -u 脚本.py` 前台跑几十秒即可区分——死循环=零输出，网络问题=有失败日志。
 
+### 5.10 `git push` 报 `CONNECT tunnel failed, response 502`
+
+**现象**：`git push` 连续失败、报 `502`；但 `curl https://api.github.com/...` 正常。
+这是沙箱出口代理对 `github.com` 的 CONNECT 通道抽风（2026-11-11 出现两次，持续十几分钟到半小时）。
+
+处理顺序：
+
+1. 定时任务按 DAILY 第七节规则——**单次尝试、失败不重试、commit 留待下次补推**，不要卡在推送上；
+2. 人工补推时，改用本机代理（用户自备，端口 `7897`）：
+   ```bash
+   git -C D:/QClaw/Stock/index_valuation -c http.proxy=http://127.0.0.1:7897 push origin main
+   ```
+   只在命令里临时指定（`-c`），**不要写进 git config**——代理不常开，写死会让平时的 push 也失败。
+3. 走 `api.github.com` 的操作（触发/查询 workflow）不受影响，不必等代理。
+
 ---
 
 ## 六、验收清单（改动后必须过）

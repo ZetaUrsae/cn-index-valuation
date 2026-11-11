@@ -79,6 +79,8 @@ index_valuation/
 ├── tools/                  辅助工具（站点构建等）
 ├── data/                   历史库（增量缓存）⚠ 禁删，详见 RUNBOOK 第四节
 ├── work/                   中间产物（可整体清空）
+├── assets/echarts.min.js   图表库本地副本（Actions 报告内联用，避免 CDN）
+├── .github/workflows/      Actions 并行观察线（daily.yml）
 └── reports/                报告产出（archive/ 为 v1 周报存档）
 ```
 
@@ -92,6 +94,12 @@ index_valuation/
 - **定时任务**：WorkBuddy 定时任务 `Index Valuation Daily`（id `f3a34004-…`），
   五步流程见 [docs/DAILY.md](docs/DAILY.md)。
 - **非管线脚本**：`recompute_sharpe.py`、`reorder.py`（一次性修正工具）。
+- **在线查看**：
+  - 正式报告 → WorkBuddy 发布站（`tools/build_site.py` 生成，echarts 本地化）；
+  - GitHub Actions 观察线 → `actions` 分支，已开 Pages：
+    <https://zetaursae.github.io/cn-index-valuation/>（根地址＝最新一期观察报告，
+    历史各期在 `reports/index_val_report_<日期>_gh.html`）。该分支由 workflow
+    每次运行 force-push 整体覆盖，本地永不推它。
 
 ---
 

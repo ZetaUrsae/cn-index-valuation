@@ -32,6 +32,34 @@
 
 ---
 
+## [v2.7.4] — 2026-11-11
+
+主题：**GitHub Actions 并行观察线上线**（本地定时任务仍是唯一权威，云端只做同日对照）。
+
+### Added
+- `.github/workflows/daily.yml`：cron `0 22 * * 0-4`（UTC 22:00＝北京次日 06:00，工作日）
+  + `workflow_dispatch` 手动触发；checkout `main` 作共享基线 → `run_daily.py --tag gh`
+  → 运行后的 `data/` 与 `_gh` 报告 force-push 到 `actions` 分支 → 报告存 artifact（90 天）。
+  用自带 `GITHUB_TOKEN`（`contents: write`），**零 Secrets**。
+- `requirements.txt`：`requests` / `pandas` / `numpy`（全管线仅此三项第三方依赖）。
+- `assets/echarts.min.js`：图表库入库副本，Actions 报告中把 jsdelivr CDN 替换为本地引用
+  （`reports/` 下 `../assets/`，根 `index.html` 用 `./assets/`），国内访问不依赖 CDN。
+- GitHub Pages（源 `actions` 分支）：根地址＝最新一期观察报告，历史期在 `reports/*_gh.html`。
+
+### Fixed
+- **路径可移植性**：`scripts/{cfg,gen2,prep,tech,proc2}.py` 曾硬编码
+  `D:/QClaw/Stock/index_valuation/`，改为从 `__file__` 推导 `BASE`（tech/proc2 首版漏了尾部斜杠，
+  云端 run#4 抓出后修正）。此前本地运行掩盖了该问题，云端首跑即暴露。
+- Actions 注解清零：`checkout` / `setup-python` / `upload-artifact` 升到 v7（Node 24），
+  `runs-on` 由 `ubuntu-latest` 钉到 `ubuntu-24.04`（避免镜像自动迁移影响可复现性）。
+
+### Removed
+- 外部收费数据源（Tushare）**全量移除**：provider、配置开关、专用工具、v1 旧管线全家
+  （`run_weekly.py` / `fetch*.py` / `gen.py` / `template.html`）、两份校验工具与审计归档均删除；
+  `data/*.json` 历史数据**原样保留沿用**。
+
+---
+
 ## [v2.7.3] — 2026-11-11
 
 主题：**站点保留策略改为「每月首个交易日锚点 + 最近 10 期」**。
