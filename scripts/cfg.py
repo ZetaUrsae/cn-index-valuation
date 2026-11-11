@@ -8,7 +8,8 @@ import sys
 import datetime
 import calendar
 
-BASE = "D:/QClaw/Stock/index_valuation/"
+# 项目根 = scripts/ 的上级目录（自动推导，本地与 GitHub Actions 通用）
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
 DATA = BASE + "data/"        # 持久数据/历史库（增量缓存，勿随手删除）
 WORK = BASE + "work/"        # 每次运行生成的中间产物（可清理，会重建）
 REPORTS = BASE + "reports/"  # 日报 HTML 产出

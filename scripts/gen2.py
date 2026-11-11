@@ -2,7 +2,7 @@
 """组装全部数据 -> DATA -> 注入 template2.html"""
 import json, sys, os
 
-BASE = "D:/QClaw/Stock/index_valuation/"
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
 sys.path.insert(0, BASE)
 import cfg
 MAN = cfg.load_manual()

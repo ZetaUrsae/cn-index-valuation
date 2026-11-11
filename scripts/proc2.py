@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import json, math
+import json, math, os
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
 import numpy as np
 import pandas as pd
 
@@ -33,7 +34,7 @@ def pct(series, v):
 
 
 # ---------------- PCR ----------------
-pcr = pd.read_csv("D:/QClaw/Stock/index_valuation/data/pcr_raw.csv", dtype={"date": str})
+pcr = pd.read_csv(BASE + "data/pcr_raw.csv", dtype={"date": str})
 
 res = {}
 for name in ORDER:
@@ -63,7 +64,7 @@ for name in ORDER:
          "vol": round(float(r["vol_pcr"]), 3) if np.isfinite(r["vol_pcr"]) else None}
         for _, r in tail.iterrows()]
 
-json.dump(res, open("D:/QClaw/Stock/index_valuation/work/pcr.json", "w", encoding="utf-8"),
+json.dump(res, open(BASE + "work/pcr.json", "w", encoding="utf-8"),
           ensure_ascii=False, indent=1, default=_d)
 print("=== PCR (认沽/认购) ===")
 for n in ORDER:
@@ -71,7 +72,7 @@ for n in ORDER:
     print(f"{n:<6} OI-PCR={v['oi_pcr']} 分位={v['oi_pcr_pct']}% 中位={v['oi_pcr_med']} 区间[{v['oi_pcr_min']},{v['oi_pcr_max']}] 20日均={v['oi_pcr_ma20']} | VOL-PCR={v['vol_pcr']} 分位={v['vol_pcr_pct']}% 样本{v['n']}日")
 
 # ---------------- ETF shares ----------------
-etf = json.load(open("D:/QClaw/Stock/index_valuation/data/etf_raw.json", encoding="utf-8"))
+etf = json.load(open(BASE + "data/etf_raw.json", encoding="utf-8"))
 sh = etf["shares"]
 fd = etf["fdaily"]
 shres = {}
@@ -113,6 +114,6 @@ for name in ORDER:
     }
     print(f"{name:<6} {code} {fname} 份额={last:.1f}亿份({lastd}) 5日{c5:+} 20日{c20:+}({c20p}%) 60日{c60:+}({c60p}%) YTD{shres[name]['ytd']:+}({shres[name]['ytdp']}%) 收盘{price}")
 
-json.dump(shres, open("D:/QClaw/Stock/index_valuation/work/shares.json", "w", encoding="utf-8"),
+json.dump(shres, open(BASE + "work/shares.json", "w", encoding="utf-8"),
           ensure_ascii=False, indent=1, default=_d)
 print("saved pcr.json / shares.json")

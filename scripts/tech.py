@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-import json, math
-raw = json.load(open("D:/QClaw/Stock/index_valuation/data/raw.json", encoding="utf-8"))
+import json, math, os
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+raw = json.load(open(BASE + "data/raw.json", encoding="utf-8"))
 order = ["000300.SH","000016.SH","000905.SH","399006.SZ","000688.SH"]
 
 def ma(v,n): return sum(v[-n:])/n if len(v)>=n else None
@@ -38,5 +39,5 @@ for c in order:
     }
     out[c]=r
     print(json.dumps({k:v for k,v in r.items() if k!="candles"}, ensure_ascii=False))
-json.dump(out, open("D:/QClaw/Stock/index_valuation/work/tech.json","w",encoding="utf-8"), ensure_ascii=False, indent=1)
+json.dump(out, open(BASE + "work/tech.json","w",encoding="utf-8"), ensure_ascii=False, indent=1)
 print("saved tech.json")
