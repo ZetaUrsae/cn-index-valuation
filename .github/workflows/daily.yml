@@ -61,7 +61,9 @@ jobs:
           sed -i "s#$CDN#../assets/echarts.min.js#g" reports/index_val_report_*_gh.html
           touch .nojekyll
           git checkout -B actions
-          git add -A data reports index.html .nojekyll
+          # actions 分支的 README 顶部加一句声明（只存在于该分支，永不回 main）
+          { printf '> **本分支 `actions` 由 GitHub Actions 每日自动生成**（观察线快照），请勿在此提交修改。\n> 权威代码与数据在 `main` 分支；报告入口：[index.html](index.html)。\n\n'; cat README.md; } > README.tmp && mv README.tmp README.md
+          git add -A data reports index.html .nojekyll README.md
           git commit -m "GH observe run $(date -u +%Y%m%d)"
           git push origin actions --force
 

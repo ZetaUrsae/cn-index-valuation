@@ -3,20 +3,30 @@
 每个交易日早上自动生成五只宽基指数（沪深300 / 上证50 / 中证500 / 创业板指 / 科创50）的
 「估值 + 资金面 + 情绪面 + 技术面」多维跟踪日报（HTML）。
 
-产出：`reports/index_val_report_<日期>.html`。
+**在线查看**：<https://zetaursae.github.io/cn-index-valuation/>
+（GitHub Actions 观察线的最新一期，单文件、可直接阅读）
+
+产出：`reports/index_val_report_<日期>.html`（自包含单文件，可存档、可转发）。
+
+> **免责声明**：本项目为个人研究工具。报告数据全部来自公开接口（新浪财经、东方财富、
+> 上海/深圳证券交易所、中证指数公司），口径与来源在 [docs/DATA.md](docs/DATA.md) 逐项说明；
+> 内容不构成投资建议，引用前请自行核对。
 
 ---
 
 ## 快速开始
 
 ```bash
-# Python 固定用这个 venv（pandas / requests 装在其中）
+# 依赖：Python 3.13 + requests / pandas / numpy
+pip install -r requirements.txt
+
+# 下面两行为作者本机环境，换机器按自己的路径替换
 PY=C:/Users/zky12/.workbuddy/binaries/python/envs/default/Scripts/python.exe
 cd D:/QClaw/Stock/index_valuation
 
-$PY run_daily.py                        # 日常跑一次（约 25 秒）
+$PY run_daily.py                        # 日常跑一次（约 25 秒，21 发 HTTP）
 $PY run_daily.py --check                # 只判重：RUN / SKIP
-$PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，不影响定时任务判重
+$PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，不参与判重
 ```
 
 日常运行完全自动（定时任务周一至五 06:00），无需人工干预。
@@ -55,8 +65,7 @@ $PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，�
 | 查"什么时候为什么改了" | [docs/CHANGELOG.md](docs/CHANGELOG.md) |
 
 写文档的约定：同一内容不要在两份文档里各写一遍（第二处写指针）；主文档只写当前状态，
-历史演进进 CHANGELOG；每个"坑"写清**现象 → 原因 → 处理**。历史审计报告在 `docs/audits/`
-（一次性诊断，勿当现状）。
+历史演进进 CHANGELOG；每个"坑"写清**现象 → 原因 → 处理**。
 
 ---
 
@@ -86,6 +95,19 @@ index_valuation/
 
 ---
 
+## 分支说明
+
+| 分支 | 谁写 | 内容 | 角色 |
+|---|---|---|---|
+| `main` | 本地定时任务（唯一权威） | 代码 + 完整历史库 + 正式报告 | 日常交付，任何人都以它为准 |
+| `actions` | GitHub Actions（每日 force-push） | 云端独立跑一遍的产物（`_gh` 报告、`index.html`） | 并行观察线，供 Pages 发布；**永不合并回 main** |
+
+云端流程：`checkout main`（共享基线）→ `run_daily.py --tag gh` → 推 `actions` →
+Pages 自动重建。定义见 [.github/workflows/daily.yml](.github/workflows/daily.yml)。
+两条线的 `data/` **各自生长、互不回写**，同日两份报告用于交叉校验数据源稳定性。
+
+---
+
 ## 其他约定
 
 - **报告版式与口径约定**（章节顺序、红涨绿跌、日期标注规则）见
@@ -105,6 +127,11 @@ index_valuation/
 
 ## 变更记录摘要
 
+- **2026-11-11 v2.7.4**：GitHub Actions 并行观察线上线（云端每日独立跑一遍、产物推 `actions` 分支、Pages 发布）；仓库转公开；脚本路径改 `__file__` 推导（可移植）；Tushare 相关代码与文档全量移除（历史数据保留沿用）
+- 2026-11-11 v2.7.3：站点保留策略＝每月首个交易日锚点 + 最近 10 期
+- 2026-11-10 v2.7.2：移动端适配（仅 ≤640px 断点，桌面零影响）
+- 2026-11-03 v2.7.1：报告发布为在线站点（`tools/build_site.py`，echarts/SDK 本地化）
+- 2026-10-28 v2.7.0：机构展望表改「状态 + 观点变化」；2026-10-27 v2.6.7–2.6.8：版式改造（删头部说明、ERP 默认近十年、期货表期限胶囊与年化条、KPI 卡带温度条）
 - **2026-10-27 v2.6.6**：修复 10-27 06:00 定时任务失败——期货环节死循环（季月游标不前进）、CUR 数据结构错、`push2his` 被拒；取数加超时收紧与熔断，close_hist/中证1000 现货接新浪兜底
 - **2026-10-26 v2.6.5**：情绪面新增「股指期货当月基差」（IH/IF/IC/IM 升贴水走势+读数条，PCR 之后）；新取数脚本 fetch_futures.py（新浪合约拼接当月连续+中证1000 现货）
 - **2026-10-26 v2.6.4**：文档体系精简为 6 份（DAILY.md 每日执行清单 / DATA.md 合并 / INDEX 并入本文件）；项目备份至 GitHub 私有仓库，定时任务新增每日推送步骤（单次尝试、失败下次补推）
