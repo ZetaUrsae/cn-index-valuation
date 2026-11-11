@@ -62,7 +62,7 @@ jobs:
           touch .nojekyll
           git checkout -B actions
           # actions 分支的 README 顶部加一句声明（只存在于该分支，永不回 main）
-          { printf '> **本分支 `actions` 由 GitHub Actions 每日自动生成**（观察线快照），请勿在此提交修改。\n> 权威代码与数据在 `main` 分支；报告入口：[index.html](index.html)。\n\n'; cat README.md; } > README.tmp && mv README.tmp README.md
+          { printf '> **本分支 `actions` 是 GitHub Actions 每日自动生成的观察线快照**，不是权威版本。\n> 代码与 `main` 同步；`data/` 与 `reports/*_gh.html` 由云端独立取数生成，**每次运行 force-push 整体覆盖，请勿在此提交修改**。\n> 权威版本见 `main`；直接看报告：[index.html](index.html)｜历史各期见 `reports/`。\n\n'; cat README.md; } > README.tmp && mv README.tmp README.md
           git add -A data reports index.html .nojekyll README.md
           git commit -m "GH observe run $(date -u +%Y%m%d)"
           git push origin actions --force
