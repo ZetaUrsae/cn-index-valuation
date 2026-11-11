@@ -6,6 +6,10 @@
 #
 # 时区换算：UTC 22:00 = 北京时间次日 06:00；cron 用 UTC 周日至周四（0-4），
 # 对应北京周一至周五的工作日。GitHub cron 有 5~30 分钟抖动，属正常。
+#
+# 报告查看：actions 分支已开 GitHub Pages（仓库 Settings → Pages），
+# 根地址即最新一次观察运行的报告（每次运行把最新报告复制成根 index.html）；
+# 历史各期在 reports/index_val_report_<日期>_gh.html。
 name: Daily observe run
 
 on:
@@ -22,16 +26,18 @@ concurrency:
 
 jobs:
   observe:
-    runs-on: ubuntu-latest
+    # 固定镜像版本：ubuntu-latest 会随官方迁移漂移（2026-10-19 起转 Ubuntu 26），
+    # 数据管线要的是可复现，故显式钉住。
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout main (shared baseline)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
@@ -45,13 +51,17 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 最新一期报告复制成根 index.html，供 GitHub Pages 首页直接打开
+          LATEST=$(ls -1t reports/index_val_report_*_gh.html | head -1)
+          cp "$LATEST" index.html
+          touch .nojekyll
           git checkout -B actions
-          git add -A data reports
+          git add -A data reports index.html .nojekyll
           git commit -m "GH observe run $(date -u +%Y%m%d)"
           git push origin actions --force
 
       - name: Upload report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gh-report-${{ github.run_id }}
           path: reports/index_val_report_*_gh.html
