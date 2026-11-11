@@ -51,9 +51,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 图表库本地化：template2.html 默认引 jsdelivr CDN，国内访问不稳，
+          # 改为仓库内 assets/echarts.min.js（reports/ 下用 ../，根 index 用 ./）
+          CDN='https://cdn\.jsdelivr\.net/npm/echarts@5/dist/echarts.min.js'
           # 最新一期报告复制成根 index.html，供 GitHub Pages 首页直接打开
           LATEST=$(ls -1t reports/index_val_report_*_gh.html | head -1)
           cp "$LATEST" index.html
+          sed -i "s#$CDN#./assets/echarts.min.js#g" index.html
+          sed -i "s#$CDN#../assets/echarts.min.js#g" reports/index_val_report_*_gh.html
           touch .nojekyll
           git checkout -B actions
           git add -A data reports index.html .nojekyll
