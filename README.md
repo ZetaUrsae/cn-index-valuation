@@ -112,7 +112,7 @@ index_valuation/
 ├── work/                   中间产物（可整体清空）
 ├── assets/echarts.min.js   图表库本地副本（Actions 报告内联用，避免 CDN）
 ├── .github/workflows/      Actions 并行观察线（daily.yml）
-└── reports/                报告产出（archive/ 为 v1 周报存档）
+└── reports/                报告产出（根目录＝最近 10 期 + 每月首个交易日，其余在 archive/）
 ```
 
 ---
@@ -137,6 +137,9 @@ Pages 自动重建。定义见 [.github/workflows/daily.yml](.github/workflows/d
   改版式请改 `scripts/template2.html`，不要手改报告。
 - **定时任务**：WorkBuddy 定时任务 `Index Valuation Daily`（id `f3a34004-…`），
   五步流程见 [docs/DAILY.md](docs/DAILY.md)。
+- **历史报告只读不改**：已产出的报告是快照，口径、文案、脚注的调整只作用于当期及以后，
+  不回改旧报告；超出保留期的报告（最近 10 期 + 每月首个交易日之外）用 `git mv` 移入
+  `reports/archive/`，历史随之保留。
 - **非管线脚本**：`recompute_sharpe.py`、`reorder.py`（一次性修正工具）。
 - **在线查看**：
   - **正式报告** → WorkBuddy 发布站：<https://index-valuation-daily-10055.app.workbuddy.host/?sharecode=WSS7KSLIGL>
