@@ -285,7 +285,11 @@ def main() -> int:
         return 1
     from cfg import REPORT_TAG, report_path
     out = report_path(asof, REPORT_TAG)
-    _write_latest_copy(out)
+    try:
+        _write_latest_copy(out)
+    except OSError as e:
+        # 纯本地便利功能（固定入口副本），失败不能让已产出的报告被判为失败
+        print("  [warn] latest.html 副本未更新：%s" % e)
     print("完成，用时 %.0fs" % (time.time() - t0))
     print("输出: %s" % out)
     return 0
