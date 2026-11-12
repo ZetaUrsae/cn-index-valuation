@@ -560,11 +560,23 @@ class SseCalendar(Provider):
 
     日历是历史事实，一次运行内不会变，因此做了进程内缓存：不缓存的话
     ``resolve_asof`` + 各域缺口检测会把同一张表拉 6 次。
+
+    ⚠ 尾部补全（2026-11-13 起）：中证这张日期表由自家夜间批次维护，偶有
+    「收盘当晚 / 次日清晨仍未追加当日」的滞后。实测 2026-11-13 06:00，
+    日历末条是 11-11，而中证 index-perf-oneday 已返回 tradeDate=2026-11-12、
+    新浪日线六只指数都有 11-12 收盘、沪深交易所也都发布了 11-12 期权统计。
+    日历缺当日不是小事：PCR 的逐日枚举走 ``_trading_days`` → 本日历，
+    缺日时**不报错**、只是少问一天，报告就把前一日 PCR 当成当日值——
+    正是「旧数据标成新日期」。因此这里用新浪日线（只有真实成交才出 bar）
+    补齐中证末条之后、落在最近 ``TAIL_DAYS`` 天内的日期；
+    新浪不可用时安静退回原口径（行为与补丁前完全一致），不影响历史。
     """
 
     name = "sse_calendar"
     domains = ("calendar",)
-    desc = "交易日历（以上交所指数历史日期为准）"
+    desc = "交易日历（中证历史日期 + 新浪日线尾部补全）"
+
+    TAIL_DAYS = 10
 
     def fetch_calendar(self, start: str, end: str) -> List[str]:
         global _CAL_CACHE
@@ -574,13 +586,40 @@ class SseCalendar(Provider):
                          headers={"Referer": "https://www.csindex.com.cn/"},
                          expect="json")
             data = (j or {}).get("data") or []
-            _CAL_CACHE = sorted({str(x) for x in data})
+            _CAL_CACHE = self._fill_tail(sorted({str(x) for x in data}))
         if not _CAL_CACHE:
             raise ProviderError("中证交易日历无数据")
         days = [d for d in _CAL_CACHE if start <= d <= end]
         if not days:
             raise ProviderError(f"交易日历 {start}~{end} 无数据")
         return days
+
+    def _fill_tail(self, days: List[str]) -> List[str]:
+        """用新浪 000300 日线补齐中证日历的尾部缺口（只补最近 TAIL_DAYS 天）。"""
+        if not days:
+            return days
+        today = datetime.date.today()
+        ymd_today = today.strftime("%Y%m%d")
+        if days[-1] >= ymd_today:
+            return days
+        floor = (today - datetime.timedelta(days=self.TAIL_DAYS)).strftime("%Y%m%d")
+        try:
+            j = http.get(
+                "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData",
+                params={"symbol": "sh000300", "scale": 240, "ma": "no",
+                        "datalen": str(self.TAIL_DAYS + 5)},
+                headers={"Referer": "https://finance.sina.com.cn/"},
+                expect="json")
+        except Exception as e:                       # noqa: BLE001
+            print(f"[calendar] 尾部补全跳过（新浪不可用）：{str(e)[:80]}", flush=True)
+            return days
+        bars = {_ymd((r or {}).get("day")) for r in (j or [])}
+        extra = sorted(d for d in bars
+                       if d and d > days[-1] and floor <= d <= ymd_today)
+        if extra:
+            print(f"[calendar] 中证日历末条 {days[-1]} 滞后，按新浪日线补入 {','.join(extra)}",
+                  flush=True)
+        return sorted(set(days) | set(extra))
 
 
 # ---------------------------------------------------------------- 工具
