@@ -138,8 +138,8 @@ Pages 自动重建。定义见 [.github/workflows/daily.yml](.github/workflows/d
 - **定时任务**：WorkBuddy 定时任务 `Index Valuation Daily`（id `f3a34004-…`），
   五步流程见 [docs/DAILY.md](docs/DAILY.md)。
 - **历史报告只读不改**：已产出的报告是快照，口径、文案、脚注的调整只作用于当期及以后，
-  不回改旧报告；超出保留期的报告（最近 10 期 + 每月首个交易日之外）用 `git mv` 移入
-  `reports/archive/`，历史随之保留。
+  不回改旧报告；超出保留期的报告（最近 10 期 + 每月首个交易日之外）由每日运行**自动**
+  移入 `reports/archive/`（与站点保留策略同一套规则），失败只告警、不影响交付。
 - **非管线脚本**：`recompute_sharpe.py`、`reorder.py`（一次性修正工具）。
 - **在线查看**：
   - **正式报告** → WorkBuddy 发布站：<https://index-valuation-daily-10055.app.workbuddy.host/?sharecode=WSS7KSLIGL>

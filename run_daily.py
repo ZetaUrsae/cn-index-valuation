@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -117,6 +118,42 @@ def _write_latest_copy(out: str) -> None:
     tmp = dst + ".tmp"
     shutil.copyfile(out, tmp)
     os.replace(tmp, dst)
+
+
+REPORT_RE = re.compile(r"^index_val_report_(\d{8})\.html$")
+
+
+def _archive_old_reports(recent: int = 10) -> list:
+    """把超出保留期的报告移入 reports/archive/（保留策略与站点一致：最近 N 期 + 每月首个交易日）。
+
+    - 规则与 `tools/build_site.py::select_reports` 相同，避免两处口径分叉；
+    - 只认正式文件名 `index_val_report_YYYYMMDD.html`，`_gh` / `_test` / `_band` 一律不动；
+    - 纯本地重命名（git 识别为 rename，历史不丢），几十个文件的量级，耗时毫秒级。
+    """
+    rep = os.path.join(ROOT, "reports")
+    items = []
+    for fn in os.listdir(rep):
+        m = REPORT_RE.match(fn)
+        if m:
+            items.append((m.group(1), fn))
+    if len(items) <= recent:
+        return []
+    items.sort(reverse=True)
+    keep = {fn for _, fn in items[:recent]}
+    anchors = {}
+    for d, fn in sorted(items):          # 升序 → 每月第一条即该月最早
+        anchors.setdefault(d[:6], fn)
+    keep |= set(anchors.values())
+
+    arch = os.path.join(rep, "archive")
+    moved = []
+    for _, fn in items:
+        if fn in keep:
+            continue
+        os.makedirs(arch, exist_ok=True)
+        os.replace(os.path.join(rep, fn), os.path.join(arch, fn))
+        moved.append(fn)
+    return sorted(moved)
 
 
 def _verify_quotes(asof: str) -> None:
@@ -290,6 +327,12 @@ def main() -> int:
     except OSError as e:
         # 纯本地便利功能（固定入口副本），失败不能让已产出的报告被判为失败
         print("  [warn] latest.html 副本未更新：%s" % e)
+    try:
+        moved = _archive_old_reports()
+        if moved:
+            print("  归档 %d 份超期报告 → reports/archive/" % len(moved))
+    except OSError as e:
+        print("  [warn] 自动归档未完成：%s" % e)
     print("完成，用时 %.0fs" % (time.time() - t0))
     print("输出: %s" % out)
     return 0
