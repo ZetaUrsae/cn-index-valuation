@@ -37,7 +37,9 @@
 主题：**GitHub Actions 并行观察线上线**（本地定时任务仍是唯一权威，云端只做同日对照）。
 
 ### Added
-- `.github/workflows/daily.yml`：cron `0 22 * * 0-4`（UTC 22:00＝北京次日 06:00，工作日）
+- `.github/workflows/daily.yml`：cron `16 22 * * 0-4`（UTC 22:16＝北京次日 06:16，工作日；
+  初版为整点 `0 22`，2026-11-12 首次到点未触发——整点是全站调度高峰，官方允许延迟甚至丢弃，
+  故错开整点）
   + `workflow_dispatch` 手动触发；checkout `main` 作共享基线 → `run_daily.py --tag gh`
   → 运行后的 `data/` 与 `_gh` 报告 force-push 到 `actions` 分支 → 报告存 artifact（90 天）。
   用自带 `GITHUB_TOKEN`（`contents: write`），**零 Secrets**。
