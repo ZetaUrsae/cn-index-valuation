@@ -54,8 +54,8 @@ $PY run_daily.py --check                # 只判重：RUN / SKIP
 $PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，不参与判重
 ```
 
-每次正式运行后会刷新 `reports/latest.html`（一个约 200 字节的跳转壳，指向当期报告），
-本地固定收藏这一个文件即可，不必每天改日期戳。
+每次正式运行后会把当期报告复制为 `reports/latest.html`（本地固定入口，已在 `.gitignore` 中，
+只是本机便利、不进版本库），收藏这一个文件即可，不必每天改日期戳。
 
 日常运行完全自动（定时任务周一至五 06:00），无需人工干预。
 完整命令、环境变量、故障排查见 [docs/RUNBOOK.md](docs/RUNBOOK.md)；定时任务每日执行清单见 [docs/DAILY.md](docs/DAILY.md)。

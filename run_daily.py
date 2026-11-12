@@ -105,25 +105,18 @@ def _tagged_reports(asof: str) -> list:
     return sorted(os.path.basename(p) for p in glob.glob(pat))
 
 
-def _write_latest_stub(out: str) -> None:
-    """写 reports/latest.html —— 一个只做跳转的小壳，指向本次产出的报告。
+def _write_latest_copy(out: str) -> None:
+    """把本次报告复制成 reports/latest.html —— 固定入口，本地收藏后不必再改日期戳。
 
-    动因：报告文件名带日期，本地打开每次都要改日期戳。固定收藏 latest.html 即可，
-    内容只有一行 meta refresh（约 200 字节），不复制正文、不增加体积。
-    用相对路径跳转，file:// 与 Pages 都能用。
+    用**副本**而不是跳转壳：打开就是内容，不会先闪一下跳转页。
+    体积与正文相同（约 350 KB），已列入 .gitignore，只存在于本地，
+    避免仓库每天多存一份；云端入口由 actions 分支的根 index.html 承担。
     """
-    name = os.path.basename(out)
-    stub = os.path.join(ROOT, "reports", "latest.html")
-    html = (
-        "<!doctype html>\n<meta charset=\"utf-8\">\n"
-        "<title>宽基指数估值日报 · 最新一期</title>\n"
-        "<meta http-equiv=\"refresh\" content=\"0;url=%s\">\n"
-        "<a href=\"%s\">最新一期 %s</a>\n" % (name, name, name)
-    )
-    tmp = stub + ".tmp"
-    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-        f.write(html)
-    os.replace(tmp, stub)
+    import shutil
+    dst = os.path.join(ROOT, "reports", "latest.html")
+    tmp = dst + ".tmp"
+    shutil.copyfile(out, tmp)
+    os.replace(tmp, dst)
 
 
 def _verify_quotes(asof: str) -> None:
@@ -292,7 +285,7 @@ def main() -> int:
         return 1
     from cfg import REPORT_TAG, report_path
     out = report_path(asof, REPORT_TAG)
-    _write_latest_stub(out)
+    _write_latest_copy(out)
     print("完成，用时 %.0fs" % (time.time() - t0))
     print("输出: %s" % out)
     return 0

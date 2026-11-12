@@ -19,3 +19,6 @@ Thumbs.db
 
 # 站点构建产物（tools/build_site.py 生成，不入库）
 site/
+
+# 固定入口副本（run_daily.py 每次覆盖为最新一期报告，纯本地便利，不入库）
+reports/latest.html
