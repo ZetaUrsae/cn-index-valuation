@@ -10,9 +10,11 @@ from ivdata import paths
 
 
 def test_root_is_project_root():
-    assert os.path.basename(paths.ROOT) == "index_valuation"
-    assert os.path.isdir(paths.ROOT)
+    # 不校验目录名：云端 checkout 出来叫 cn-index-valuation，本地叫 index_valuation。
+    # 真正的不变量是「根目录下有入口脚本和 ivdata 包」。
+    assert os.path.isfile(os.path.join(paths.ROOT, "run_daily.py"))
     assert os.path.isdir(os.path.join(paths.ROOT, "ivdata"))
+    assert os.path.isdir(os.path.join(paths.ROOT, "tests"))
 
 
 def test_base_has_trailing_slash_and_joins_correctly():
