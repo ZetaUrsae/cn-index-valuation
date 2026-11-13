@@ -60,6 +60,19 @@ $PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，�
 日常运行完全自动（定时任务周一至五 06:00），无需人工干预。
 完整命令、环境变量、故障排查见 [docs/RUNBOOK.md](docs/RUNBOOK.md)；定时任务每日执行清单见 [docs/DAILY.md](docs/DAILY.md)。
 
+### 测试与检查
+
+```bash
+pip install -r requirements-dev.txt     # pytest / ruff，仅开发用
+python -m ruff check .                  # 静态检查（语法 + 未定义名/未用变量）
+python -m pytest -q                     # 单元测试，约 1 秒
+```
+
+`tests/` 覆盖四类"静默失效"：配置契约（DOMAINS 里的每个源都注册过）、
+归一化单位换算（股/手、元/万元）、日期工具（月末夹取、闰年跨年）、
+报告保留与判重（该归档的归档、该跳过的不重复跑）。
+`.github/workflows/ci.yml` 在每次 push 和 PR 上跑这两步，约 20 秒。
+
 ---
 
 ## 数据与可靠性
@@ -107,6 +120,7 @@ index_valuation/
 │   ├── store.py            JSON / CSV 读写
 │   └── providers/          sina / em / exchange / csi / local
 ├── scripts/                加工与排版（v1 原样复用）
+├── tests/                  单元测试（pytest，零联网、零数据依赖）
 ├── tools/                  辅助工具（站点构建等）
 ├── data/                   历史库（增量缓存）⚠ 禁删，详见 RUNBOOK 第四节
 ├── work/                   中间产物（可整体清空）
