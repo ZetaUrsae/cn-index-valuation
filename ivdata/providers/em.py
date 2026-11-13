@@ -41,7 +41,7 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 from .. import http
-from ..config import CODE2EM, CODE2NAME, INDEX_CODES
+from ..config import CODE2EM
 from ..contracts import Provider, ProviderError
 
 DC = "https://datacenter-web.eastmoney.com/api/data/v1/get"

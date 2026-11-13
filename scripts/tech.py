@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import json, math, os
+import json
+import os
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
 raw = json.load(open(BASE + "data/raw.json", encoding="utf-8"))
 order = ["000300.SH","000016.SH","000905.SH","399006.SZ","000688.SH"]
@@ -10,14 +11,18 @@ def fmt(x,n=2): return None if x is None else round(x,n)
 out={}
 for c in order:
     d = sorted(raw[c]["daily"], key=lambda r:r["trade_date"])
-    close=[r["close"] for r in d]; vol=[r.get("vol") or 0 for r in d]
+    close = [r["close"] for r in d]
+    vol = [r.get("vol") or 0 for r in d]
     last=d[-1]
     o,h,l,cl = last["open"],last["high"],last["low"],last["close"]
     pc = d[-2]["close"]
-    body = abs(cl-o); rng = max(h-l,1e-9)
-    upsh = (h-max(o,cl))/rng*100; dnsh = (min(o,cl)-l)/rng*100
+    body = abs(cl - o)
+    rng = max(h - l, 1e-9)
+    upsh = (h - max(o, cl)) / rng * 100
+    dnsh = (min(o, cl) - l) / rng * 100
     ma20, ma60, ma250, ma120, ma5 = ma(close,20), ma(close,60), ma(close,250), ma(close,120), ma(close,5)
-    hi250 = max(close[-250:]); lo250 = min(close[-250:])
+    hi250 = max(close[-250:])
+    lo250 = min(close[-250:])
     v20 = sum(vol[-20:])/20 if len(vol)>=20 else None
     r = {
       "code":c,"name":raw[c]["name"],"date":last["trade_date"],

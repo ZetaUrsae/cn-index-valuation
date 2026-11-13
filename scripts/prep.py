@@ -5,7 +5,8 @@
 填 etf_name/etf_mgr，但 gen2.py 从不读这两个字段——报告里的次级 ETF 名称
 来自 gen2.py 的 OPTALT_NAME 硬编码字典。v2.0 起删除该调用，本脚本零外部请求。
 """
-import sys, json, os
+import json
+import os
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
 

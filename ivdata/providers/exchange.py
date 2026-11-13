@@ -67,14 +67,13 @@
 from __future__ import annotations
 
 import datetime
-import os
 import re
 from collections import OrderedDict
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 from .. import http
-from ..config import OPT_ETF, OPT_EXCH, OPT_MAIN
+from ..config import OPT_ETF, OPT_MAIN
 from ..contracts import Provider, ProviderError, ProviderNotApplicable
 
 SSE_Q = "https://query.sse.com.cn/commonQuery.do"

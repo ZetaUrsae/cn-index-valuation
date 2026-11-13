@@ -1,0 +1,35 @@
+# 代码质量门禁：lint + 单测。
+#
+# 与 daily.yml 的区别：那条是「跑一遍管线出报告」的观察线，这条只管代码本身
+# 有没有坏（改完 30 秒内知道），不碰数据、不推送分支、不需要任何权限。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: python -m ruff check .
+
+      - name: Unit tests (pytest)
+        run: python -m pytest -q

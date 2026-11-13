@@ -62,6 +62,7 @@ def select_reports(items, recent=10, monthly=True):
     - 某月整月没跑则自然缺该锚点，不补。
     """
     keep = {}
+    items = sorted(items, reverse=True)      # 防御：不依赖调用方传入顺序
     for iso, fn in items[:recent]:
         keep[iso] = fn
     if monthly:

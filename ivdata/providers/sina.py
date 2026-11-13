@@ -22,7 +22,6 @@ from typing import Any, Dict, List
 from .. import http
 from ..config import CODE2SINA
 from ..contracts import Provider, ProviderError
-from ..store import Store
 
 BASE = "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData"
 REFERER = "https://finance.sina.com.cn/"

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """组装全部数据 -> DATA -> 注入 template2.html"""
-import json, sys, os
+import json
+import sys
+import os
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
 sys.path.insert(0, BASE)

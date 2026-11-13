@@ -7,7 +7,9 @@
 2. ``data/etf_meta.json``      —— ETF 名称/管理人/费率缓存（落盘）
 3. 内置兜底表                   —— 上面两者都缺时用，保证日报不会因元信息中断
 """
-import sys, os, json
+import sys
+import os
+import json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cfg
 

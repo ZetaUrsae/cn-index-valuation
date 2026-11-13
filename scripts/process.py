@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """计算 1/2：估值分位、区间涨跌、隐含ROE（依赖 raw.json）"""
-import sys, os, json, math
+import sys
+import os
+import json
+import math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cfg
 import numpy as np

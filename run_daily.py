@@ -74,7 +74,7 @@ def _latest_quote_date() -> str:
     return max(dates) if dates else ""
 
 
-def _report_state(asof: str) -> tuple:
+def _report_state(asof: str, root: str = "") -> tuple:
     """判断参考交易日的报告是否已经「定稿」，返回 (是否需要跑, 原因)。
 
     判据不是「文件在不在」，而是「文件是不是收盘后生成的」：
@@ -85,8 +85,9 @@ def _report_state(asof: str) -> tuple:
     `index_val_report_<asof>_<tag>.html`，不参与判重，否则一次盘后试跑就会
     让次日的定时任务误判为「已跑过」而跳过。
     """
-    out = os.path.join(ROOT, "reports", "index_val_report_%s.html" % asof)
-    extra = _tagged_reports(asof)
+    root = root or ROOT
+    out = os.path.join(root, "reports", "index_val_report_%s.html" % asof)
+    extra = _tagged_reports(asof, root)
     tail = ("；另有试运行文件 %s（不计入判重）" % ", ".join(extra)) if extra else ""
     if not os.path.exists(out):
         return True, "缺少 %s 的报告%s" % (asof, tail)
@@ -99,10 +100,10 @@ def _report_state(asof: str) -> tuple:
         asof, time.strftime("%m-%d %H:%M", time.localtime(mtime)), tail)
 
 
-def _tagged_reports(asof: str) -> list:
+def _tagged_reports(asof: str, root: str = "") -> list:
     """列出该交易日的试运行报告（文件名带标记）。"""
     import glob
-    pat = os.path.join(ROOT, "reports", "index_val_report_%s_*.html" % asof)
+    pat = os.path.join(root or ROOT, "reports", "index_val_report_%s_*.html" % asof)
     return sorted(os.path.basename(p) for p in glob.glob(pat))
 
 
@@ -123,14 +124,14 @@ def _write_latest_copy(out: str) -> None:
 REPORT_RE = re.compile(r"^index_val_report_(\d{8})\.html$")
 
 
-def _archive_old_reports(recent: int = 10) -> list:
+def _archive_old_reports(recent: int = 10, root: str = "") -> list:
     """把超出保留期的报告移入 reports/archive/（保留策略与站点一致：最近 N 期 + 每月首个交易日）。
 
     - 规则与 `tools/build_site.py::select_reports` 相同，避免两处口径分叉；
     - 只认正式文件名 `index_val_report_YYYYMMDD.html`，`_gh` / `_test` / `_band` 一律不动；
     - 纯本地重命名（git 识别为 rename，历史不丢），几十个文件的量级，耗时毫秒级。
     """
-    rep = os.path.join(ROOT, "reports")
+    rep = os.path.join(root or ROOT, "reports")
     items = []
     for fn in os.listdir(rep):
         m = REPORT_RE.match(fn)

@@ -27,17 +27,15 @@ data/etf_raw.json {shares, fdaily, main}     etf_share + etf_quote
 """
 from __future__ import annotations
 
+import calendar
 import datetime
 import json
 import os
 from typing import Any, Dict, List, Optional
 
-from . import http
-from .config import (CODE2NAME, DATA, ETF_ALL, ETF_LIST, INDEX_CODES, OPT_ETF,
-                     OPT_EXCH, OPT_MAIN, OVERLAP_BY_DOMAIN, OVERLAP_FORCED,
+from .config import (CODE2NAME, DATA, ETF_LIST, INDEX_CODES, OPT_MAIN, OVERLAP_BY_DOMAIN, OVERLAP_FORCED,
                      SETTINGS, WORK)
 from .contracts import ProviderError
-from .provenance import Provenance
 from .registry import Registry
 from .store import CsvStore, Store
 
@@ -48,16 +46,17 @@ def _d(s: str) -> datetime.date:
 
 
 def _shift(ymd: str, days: int = 0, months: int = 0, years: int = 0) -> str:
-    """日期加减，返回 YYYYMMDD。"""
+    """日期加减，返回 YYYYMMDD。
+
+    ⚠ 年份与月份一起算，并把「日」夹到目标月的最后一天：
+    2/29 加/减 1 年应落在 2/28，而不是抛 ValueError（2026-11-13 由单测发现）。
+    """
     d = _d(ymd)
-    if years:
-        d = d.replace(year=d.year + years)
-    if months:
-        y, m = d.year, d.month + months
+    if years or months:
+        y, m = d.year + years, d.month + months
         y += (m - 1) // 12
         m = (m - 1) % 12 + 1
-        day = min(d.day, [31, 29 if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0) else 28,
-                          31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1])
+        day = min(d.day, calendar.monthrange(y, m)[1])
         d = d.replace(year=y, month=m, day=day)
     if days:
         d = d + datetime.timedelta(days=days)
