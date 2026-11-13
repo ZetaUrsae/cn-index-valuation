@@ -8,8 +8,10 @@ import sys
 import datetime
 import calendar
 
-# 项目根 = scripts/ 的上级目录（自动推导，本地与 GitHub Actions 通用）
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
+# 路径统一从 ivdata.paths 取（唯一定义处），_bootstrap 负责把项目根加进 sys.path
+import _bootstrap  # noqa: F401
+from ivdata.paths import BASE  # noqa: E402
+
 DATA = BASE + "data/"        # 持久数据/历史库（增量缓存，勿随手删除）
 WORK = BASE + "work/"        # 每次运行生成的中间产物（可清理，会重建）
 REPORTS = BASE + "reports/"  # 日报 HTML 产出

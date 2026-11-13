@@ -5,6 +5,28 @@
 
 ---
 
+## [v2.7.6] — 2026-11-13
+
+主题：**路径唯一化 + 依赖锁定**（消灭"换台机器才炸"的两类事故）。
+
+### Added
+- `ivdata/paths.py`：项目内路径的**唯一定义处**（`ROOT` / `BASE`（带尾斜杠）/ `DATA` /
+  `WORK` / `REPORTS` / `SCRIPTS` / `ASSETS` / `p()` 拼接助手）。
+- `scripts/_bootstrap.py`：把项目根加入 `sys.path`，让 `scripts/` 下的脚本
+  在「run_daily 子进程调用」与「`cd scripts && python x.py`」两种方式下都能 `import ivdata`。
+- `tests/test_paths.py`（5 例）：根目录名、尾斜杠语义、常用目录存在、无反斜杠混用、拼接助手。
+- `.editorconfig`：统一缩进/换行/编码（只影响编辑器，不重写已有文件）。
+
+### Changed
+- `ivdata/config.py`、`scripts/{cfg,gen2,prep,proc2,tech}.py` 不再各自推导 `BASE`，
+  全部改为 `from ivdata.paths import BASE`；`gen2.py` 读模板的路径改用 `paths.SCRIPTS`。
+  顺带统一 `prep.py` 的 `BASE + "/data/…"`（其余文件都是 `BASE + "data/…"`）。
+- `requirements.txt` 由下界（`>=`）改为精确版本：`requests==2.34.2` / `pandas==3.0.6` /
+  `numpy==2.5.3`——本地与云端装同一版本，避免 pandas 3.x/2.x 的 dtype 与字符串语义差异
+  造成「跑得通但数字不同」。
+
+---
+
 ## [v2.7.5] — 2026-11-13
 
 主题：**代码质量门禁**（pytest 单测 + ruff 静态检查 + CI）。

@@ -1,0 +1,17 @@
+# 编辑器统一配置（只影响编辑器行为，不重写已有文件）
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,js,css,html}]
+indent_size = 2
+
+[*.md]
+# Markdown 里行尾两个空格是有意义的换行符
+trim_trailing_whitespace = false

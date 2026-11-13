@@ -1,4 +1,8 @@
 # 宽基指数估值日报管线依赖（本地与 GitHub Actions 共用）
-requests>=2.31
-pandas>=3.0
-numpy>=2.0
+#
+# 全部锁到「本地实测通过」的具体版本：pandas 3.x 与 2.x 在 dtype / 字符串语义上
+# 有差异，只写下界会让本地与云端装到不同版本，出现「跑得通但数字不同」的隐性偏差。
+# 升级流程：改这里 → 本地跑 pytest + run_daily.py --tag test → CI 绿了再提交。
+requests==2.34.2
+pandas==3.0.6
+numpy==2.5.3

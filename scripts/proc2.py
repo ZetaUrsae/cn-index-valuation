@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
-import os
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
+import _bootstrap  # noqa: F401  （把项目根加入 sys.path）
+from ivdata.paths import BASE  # noqa: E402
 import numpy as np
 import pandas as pd
 

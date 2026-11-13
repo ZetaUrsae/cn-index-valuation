@@ -17,10 +17,8 @@ from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------- 路径
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # index_valuation/
-DATA = os.path.join(BASE, "data")
-WORK = os.path.join(BASE, "work")
-REPORTS = os.path.join(BASE, "reports")
+from .paths import DATA, WORK, REPORTS  # noqa: E402  （唯一路径定义处）
+
 CACHE = os.path.join(DATA, "cache")          # provider 级原始缓存
 for _d in (DATA, WORK, REPORTS, CACHE):
     os.makedirs(_d, exist_ok=True)

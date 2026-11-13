@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """组装全部数据 -> DATA -> 注入 template2.html"""
 import json
-import sys
 import os
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "/") + "/"
-sys.path.insert(0, BASE)
+import _bootstrap  # noqa: F401  （把项目根加入 sys.path）
+from ivdata.paths import BASE, SCRIPTS as _SCRIPTS  # noqa: E402
 import cfg
 MAN = cfg.load_manual()
 
@@ -540,7 +539,7 @@ DATA = {
 json.dump(DATA, open(BASE + "work/data2.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 OUT = cfg.report_path(cfg.ASOF, cfg.REPORT_TAG)   # 试运行时带 IV_REPORT_TAG 标记
-html = open(os.path.dirname(os.path.abspath(__file__)) + "/template2.html", encoding="utf-8").read()
+html = open(_SCRIPTS + "/template2.html", encoding="utf-8").read()
 html = html.replace("/*__DATA__*/", "const DATA = " + json.dumps(DATA, ensure_ascii=False) + ";")
 open(OUT, "w", encoding="utf-8").write(html)
 
