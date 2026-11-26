@@ -270,7 +270,7 @@
       <tbody id="tb-fund"></tbody>
     </table>
   </div></div>
-  <div class="note">· 份额单位亿份，变化同时以<b>亿份</b>与<b>百分比</b>列示；数据来自基金份额接口，含申赎与可能的份额折算因素，精确数据以基金公司公告为准。· 近60日为绝对主力观察窗（对应市场快速调整与资金再平衡阶段）。</div>
+  <div class="note">· 份额单位亿份，变化同时以<b>亿份</b>与<b>百分比</b>列示；数据来自基金份额接口，含申赎与可能的份额折算因素，精确数据以基金公司公告为准。</div>
 
   <!-- 三、情绪面 -->
   <div class="sec-title">三、情绪面：持仓 PCR（认沽 / 认购持仓比） <span class="en">Sentiment · PCR</span><span class="hint">数值越低＝看跌保护需求越弱、情绪越偏乐观</span></div>
@@ -318,7 +318,7 @@
       <tbody id="tb-tech"></tbody>
     </table>
   </div></div>
-  <div class="note">· 量比 ＝ 最新成交量 / 近20日平均成交量。· K线形态由最新交易日实体与影线结构、均线排列、连续阴阳线自动生成描述。· 五个指数当前<b>均呈空头排列、位于 20/60/250 日均线下方</b>，属深度调整后的超跌结构。</div>
+  <div class="note">· 量比 ＝ 最新成交量 / 近20日平均成交量。· K线形态由最新交易日实体与影线结构、均线排列、连续阴阳线自动生成描述。</div>
 
   <!-- 五、四维信号矩阵 -->
   <div class="sec-title">五、四维信号矩阵 <span class="en">Signal Matrix</span></div>
@@ -342,7 +342,7 @@
       <tbody id="tb-view"></tbody>
     </table>
   </div></div>
-  <div class="note">· 按<b>机构</b>组织，一家一行，<b>按发布日从新到旧</b>排列；只收录<b>外资投行</b>（高盛、摩根士丹利、摩根大通、瑞银、野村、花旗、美银、德银等）对 <b>沪深300 / 创业板指 / A股整体</b> 的公开观点，每条注明机构与发布日。· 「状态」列由脚本对比上一版报告自动判定：<span class="pill sp-new">新增</span> 为本期首次收录、<span class="pill sp-upd">更新</span> 为该机构原有观点被新报告替换、<span class="pill sp-old">沿用</span> 为表述与此前一致。· 「观点变化」列写的是与同机构此前观点的差异要点，只在该条有变动时出现；沿用条目统一显示"与前版一致"，不重复堆叠旧内容。· 整理自公开研究与媒体报道（最近更新：<span id="viewasof">—</span>），属<b>非一手来源、需核实原文</b>，口径与时效以各机构报告为准。· 主要风险提示（外资投行普遍提及）：海外利率与美元流动性、三季报盈利验证、地缘冲突与油价扰动、交易结构拥挤度。</div>
+  <div class="note">· 按<b>机构</b>组织，一家一行，<b>按发布日从新到旧</b>排列；只收录<b>外资投行</b>（高盛、摩根士丹利、摩根大通、瑞银、野村、花旗、美银、德银等）对 <b>沪深300 / 创业板指 / A股整体</b> 的公开观点，每条注明机构与发布日。· 「状态」列由脚本对比上一版报告自动判定：<span class="pill sp-new">新增</span> 为本期首次收录、<span class="pill sp-upd">更新</span> 为该机构原有观点被新报告替换、<span class="pill sp-old">沿用</span> 为表述与此前一致。· 「观点变化」列写的是与同机构此前观点的差异要点，只在该条有变动时出现；沿用条目统一显示"与前版一致"，不重复堆叠旧内容。· 整理自公开研究与媒体报道（最近更新：<span id="viewasof">—</span>），属<b>非一手来源、需核实原文</b>，口径与时效以各机构报告为准。</div>
   <!-- 总结 -->
   <div class="sec-title">总结 <span class="en">Takeaways</span></div>
   <div class="card" id="sum-card" style="padding:20px 24px;"></div>
@@ -472,16 +472,24 @@ const NAMES=DATA.rows.map(r=>r.name);
     const t=r.tech;
     const arr=t.bear_align?'空头排列':(t.bull_align?'多头排列':'均线交织');
     const body='最新K线实体占比'+fmt(t.body_pct,0)+'%，上影'+fmt(t.upsh,0)+'%/下影'+fmt(t.dnsh,0)+'%';
+    // 配色与均线位置都按数值算：2026-11-26 起不再写死"均在均线下方"/down
+    const cl=v=>v>0?'up':(v<0?'down':'');
+    const mas=[['20',t.above_ma20],['60',t.above_ma60],['250',t.above_ma250]];
+    const below=mas.filter(x=>(x[1]||0)<0).map(x=>x[0]);
+    const above=mas.filter(x=>(x[1]||0)>0).map(x=>x[0]);
+    const maDesc=((below.length?'低于'+below.join('/')+'日均线':'')+
+                  (below.length&&above.length?'、':'')+
+                  (above.length?'站上'+above.join('/')+'日均线':''))||'均线位置持平';
     const tr=document.createElement('tr');
     tr.innerHTML='<td class="l"><span class="idx">'+r.name+'</span></td>'+
-      '<td class="down">'+fmt(t.above_ma20,2)+'%</td>'+
-      '<td class="down">'+fmt(t.above_ma60,2)+'%</td>'+
-      '<td class="down">'+fmt(t.above_ma250,2)+'%</td>'+
-      '<td class="down">'+fmt(t.dd_from_250high,2)+'%</td>'+
-      '<td class="down">'+fmt(t.ret20,2)+'%</td>'+
-      '<td class="down">'+fmt(t.ret60,2)+'%</td>'+
+      '<td class="'+cl(t.above_ma20)+'">'+fmt(t.above_ma20,2)+'%</td>'+
+      '<td class="'+cl(t.above_ma60)+'">'+fmt(t.above_ma60,2)+'%</td>'+
+      '<td class="'+cl(t.above_ma250)+'">'+fmt(t.above_ma250,2)+'%</td>'+
+      '<td class="'+cl(t.dd_from_250high)+'">'+fmt(t.dd_from_250high,2)+'%</td>'+
+      '<td class="'+cl(t.ret20)+'">'+fmt(t.ret20,2)+'%</td>'+
+      '<td class="'+cl(t.ret60)+'">'+fmt(t.ret60,2)+'%</td>'+
       '<td>'+fmt(t.vol_ratio20,2)+'</td>'+
-      '<td class="l dim" style="max-width:340px;white-space:normal;">'+arr+'；位于20/60/250日均线下方；'+body+'</td>'+
+      '<td class="l dim" style="max-width:340px;white-space:normal;">'+arr+'；'+maDesc+'；'+body+'</td>'+
       '<td><span class="pill '+r.tsig.sigc+'">'+r.tsig.sig+'</span></td>';
     tb.appendChild(tr);
   });

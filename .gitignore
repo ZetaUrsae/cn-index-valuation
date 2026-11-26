@@ -22,3 +22,6 @@ site/
 
 # 固定入口副本（run_daily.py 每次覆盖为最新一期报告，纯本地便利，不入库）
 reports/latest.html
+
+# 临时预览产物（--tag preview，零取数重渲染用，非正式交付）
+reports/*_preview.html

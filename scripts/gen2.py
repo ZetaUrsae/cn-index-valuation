@@ -6,6 +6,8 @@ import os
 import _bootstrap  # noqa: F401  （把项目根加入 sys.path）
 from ivdata.paths import BASE, SCRIPTS as _SCRIPTS  # noqa: E402
 import cfg
+from summary_text import (pcr_values, pcr_regime, low_pcr_sentence,
+                          ma_below_counts, ma_sentence, combo_sentence)
 MAN = cfg.load_manual()
 
 raw = json.load(open(BASE + "data/raw.json", encoding="utf-8"))
@@ -346,41 +348,36 @@ ytd_desc = ("仅 %s 年初至今为正（%s），其余均净赎回（%s 赎回�
                _lb(neg_ytd[-1]), _p1(neg_ytd[-1]["fund"]["ytdp"]))) if pos_ytd and neg_ytd \
     else "年初至今份额整体净赎回"
 
+# 判断性文字全部由数据算出来（见 scripts/summary_text.py），不再写死行情结论。
+_pcts = pcr_values(rows)
+_regime = pcr_regime(_pcts)
+_lowpcr = low_pcr_sentence(_pcts)
+_n20 = ma_below_counts(rows)[0]
+_ma = ma_sentence(rows)
+_combo = combo_sentence(up_cnt, _n20, cheap, rich)
+
 summary_html = (
     '<div class="lead" style="margin-bottom:14px;">'
-    '<p><span class="hl">整体判断：</span>五大宽基估值分化明显——PE 分位由低到高为 %s。'
-    'PB 分位最低的是 <b>%s</b>（%.1f%%），'
-    '隐含 ROE 最高的是 <b>%s</b>（%.1f%%）。</p>'
-    '<p><span class="hl">资金与情绪：</span>近 60 个交易日 %d/5 只 ETF 份额回升，%s 领先；'
-    '期权持仓 PCR 整体处样本区间偏低位置，分位最低为 <b>%s</b>（%.1f%%）。</p>'
+    f'<p><span class="hl">整体判断：</span>五大宽基估值分化明显——PE 分位由低到高为 {rank}。'
+    f'PB 分位最低的是 <b>{by_pb[0]["name"]}</b>（{by_pb[0]["pb_pct"]:.1f}%），'
+    f'隐含 ROE 最高的是 <b>{by_roe[0]["name"]}</b>（{by_roe[0]["roe"]:.1f}%）。</p>'
+    f'<p><span class="hl">资金与情绪：</span>近 60 个交易日 {up_cnt}/5 只 ETF 份额回升，{d60_txt} 领先；'
+    f'期权持仓 PCR {_regime}，分位最低为 '
+    f'<b>{by_pcr[0]["name"]}</b>（{by_pcr[0]["pcr"]["oi_pct"]:.1f}%）。</p>'
     '<p class="note" style="margin-top:2px;">涨幅按 A 股惯例<b>红涨绿跌</b>；'
     '各维信号标签按"绿＝有利 / 红＝不利"的估值温度惯例着色（详见各表图例）。</p></div>'
-    '<p style="margin:0 0 9px;"><b>① 基本面（估值）：</b>PE 分位由低到高为 %s。'
-    'PB 分位最低 <b>%s</b>（%.1f%%）；'
-    '隐含 ROE 最高 <b>%s</b>（%.1f%%）；估值分位最高的是 <b>%s</b>（%.1f%%），压力最大。</p>'
-    '<p style="margin:0 0 9px;"><b>② 资金面：</b>近 60 个交易日份额变化：%s；'
-    '年初至今：%s。</p>'
-    '<p style="margin:0 0 9px;"><b>③ 情绪面：</b>持仓 PCR 及历史分位：%s。'
-    '其中 <b>%s</b> 与 <b>%s</b> 处样本区间最低位，认沽持仓相对认购显著萎缩，'
-    '属情绪层面的<b>一致性偏乐观</b>（反向指标：极端低位常出现在快速反弹之后，而非恐慌底部）。</p>'
-    '<p style="margin:0 0 9px;"><b>④ 技术面：</b>距 250 日高点回撤：%s；'
-    '回撤最深为 <b>%s</b>（%s）。五指数当前均位于 20/60/250 日均线下方。</p>'
-    '<p style="margin:0;"><b>⑤ 组合含义：</b>估值分位偏低一档（%s）属"估值便宜"；'
-    '分位偏高一档（%s）已不便宜。结合资金回补而技术仍在均线下方，'
-    '整体呈"<b>估值与资金先行、技术待确认</b>"的组合，需以三季报盈利兑现为关键验证。</p>'
-) % (
-    rank,
-    by_pb[0]["name"], by_pb[0]["pb_pct"],
-    by_roe[0]["name"], by_roe[0]["roe"],
-    up_cnt, d60_txt,
-    by_pcr[0]["name"], by_pcr[0]["pcr"]["oi_pct"],
-    rank,
-    by_pb[0]["name"], by_pb[0]["pb_pct"],
-    by_roe[0]["name"], by_roe[0]["roe"], by_pe[-1]["name"], by_pe[-1]["pe_pct"],
-    d60_txt, ytd_txt,
-    pcr_txt, by_pcr[0]["name"], by_pcr[1]["name"],
-    dd_txt, by_dd[0]["name"], _p1(by_dd[0]["tech"]["dd_from_250high"]),
-    cheap, rich,
+    f'<p style="margin:0 0 9px;"><b>① 基本面（估值）：</b>PE 分位由低到高为 {rank}。'
+    f'PB 分位最低 <b>{by_pb[0]["name"]}</b>（{by_pb[0]["pb_pct"]:.1f}%）；'
+    f'隐含 ROE 最高 <b>{by_roe[0]["name"]}</b>（{by_roe[0]["roe"]:.1f}%）；'
+    f'估值分位最高的是 <b>{by_pe[-1]["name"]}</b>（{by_pe[-1]["pe_pct"]:.1f}%），压力最大。</p>'
+    f'<p style="margin:0 0 9px;"><b>② 资金面：</b>近 60 个交易日份额变化：{d60_txt}；'
+    f'年初至今：{ytd_txt}。</p>'
+    f'<p style="margin:0 0 9px;"><b>③ 情绪面：</b>持仓 PCR 及历史分位：{pcr_txt}。'
+    f'其中 <b>{by_pcr[0]["name"]}</b> 与 <b>{by_pcr[1]["name"]}</b> 处样本区间最低位，{_lowpcr}。</p>'
+    f'<p style="margin:0 0 9px;"><b>④ 技术面：</b>距 250 日高点回撤：{dd_txt}；'
+    f'回撤最深为 <b>{by_dd[0]["name"]}</b>（{_p1(by_dd[0]["tech"]["dd_from_250high"])}）。'
+    f'五指数中 {_ma}。</p>'
+    f'<p style="margin:0;"><b>⑤ 组合含义：</b>{_combo}</p>'
 )
 
 _pmin = pcrdf["date"].astype(str).min()
