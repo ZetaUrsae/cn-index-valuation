@@ -5,6 +5,25 @@
 
 ---
 
+## [v2.7.8] — 2026-11-28
+
+主题：**发布站门户选日期 + 移动端优化**（Pages 不动）。
+
+### Changed
+- `tools/build_site.py`：门户模板去掉 PC 左侧日期栏，改为**顶部下拉选日期**（`daypick`），
+  默认最新一期，切换时联动 iframe / 数据日期 / 新窗口链接 / hash 深链；
+  移动端（≤820px）仍用横向 chips，两者共用同一份 `items`；范围＝最近 10 期 + 月锚（12 期）。
+- `scripts/template2.html`：≤640px 移动端增强——头部精简、宽表首列 sticky、
+  触控目标 ≥32px、超窄屏（≤380px）字号再收一档；图表用 `echarts.init` 包装在窄屏
+  收敛 grid/字号（桌面端零影响，因为只在 `window.innerWidth<=640` 生效）。
+- `build_site.copy_reports()`：构建**站点副本**时从 `template2.html` 提取 MOBILE_CSS/JS
+  补丁注入历史报告副本；`reports/` 下的正式报告按"冻结不改"原则保持原样。
+
+### Added
+- `tests/test_site.py`（3 例）：门户下拉 / chips、模板补丁标记、构建注入护栏。共 46 例通过。
+
+---
+
 ## [v2.7.7] — 2026-11-26
 
 主题：**总结与明细不再写死行情判断**（用户 2026-11-26 要求区分"小字备注"与"总结 Takeaways"）。

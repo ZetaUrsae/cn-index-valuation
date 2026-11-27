@@ -153,11 +153,15 @@
   .dis{margin-top:12px;padding:12px 14px;background:#fdf7ee;border:1px solid #f0dcb8;border-radius:8px;color:#8a6b28;}
   @media(max-width:1080px){.kpi{grid-template-columns:repeat(3,1fr);}}
 
+  /* MOBILE_CSS_BEGIN */
   /* 移动端适配（v2.7.2）：全部规则只在 ≤640px 生效，桌面端零影响。
      目标：手机上"能读、不乱、不白屏"，宽表允许横向滑动并给出提示。 */
   @media(max-width:640px){
+    /* 头部：去掉英文 tagline，日期成为第二视觉焦点，指数列表缩成一行 */
+    header .tagline{display:none;}
     header h1{font-size:19px;margin-bottom:6px;}
-    header .sub{font-size:12px;gap:4px 12px;}
+    header .sub{font-size:12px;gap:4px 12px;flex-wrap:wrap;}
+    header .asof{font-size:12.5px;color:var(--ink2);font-weight:700;}
     .hwrap{padding:0 12px;}
     .wrap{padding:0 10px 32px;}
     .card{padding:12px 10px !important;}
@@ -171,11 +175,28 @@
     .chart{height:260px !important;}
     table{font-size:11.5px;}
     thead th,tbody td{padding:7px 8px;}
+    /* 宽表横向滑动时，首列（指数名）固定，不至于读错行 */
+    .tblwrap table th:first-child,.tblwrap table td:first-child{
+      position:sticky;left:0;z-index:2;background:var(--card);
+      box-shadow:1px 0 0 var(--line);}
+    .tblwrap table thead th:first-child{z-index:3;background:#f5f7fa;}
     .c-sub,.note{font-size:11px;line-height:1.65;}
-    .seg button{font-size:11px;padding:3px 8px;}
+    /* 触控目标 ≥32px，避免手指点不中 */
+    .seg button{font-size:11.5px;min-height:32px;padding:6px 10px;}
     .tblwrap::after{content:"← 左右滑动查看完整表格 →";display:block;position:sticky;left:0;
       padding:6px 2px 0;font-size:10.5px;color:#8b98a8;text-align:center;}
   }
+  @media(max-width:380px){
+    /* 超窄屏：KPI 与表格再收一档，避免数字截断 */
+    .kpi{gap:6px;}
+    .kpi .k{padding:7px;}
+    .kpi .k .kname{font-size:12px;}
+    .kpi .k .kclose{font-size:10.5px;}
+    table{font-size:11px;}
+    thead th,tbody td{padding:6px 7px;}
+    .chart{height:240px !important;}
+  }
+  /* MOBILE_CSS_END */
 </style>
 </head>
 <body>
@@ -360,6 +381,52 @@
 
 <script>
 /*__DATA__*/
+
+/* MOBILE_JS_BEGIN */
+/* 窄屏图表参数（v2.7.8）：只在 ≤640px 时收敛 grid 边距与字号，
+   桌面端沿用各图表原本的 option。用包装 echarts.init 的方式统一处理，
+   不必逐图改 setOption，降低回归风险。 */
+const MOBILE_CHART = (typeof window !== 'undefined' && window.innerWidth <= 640);
+if (MOBILE_CHART) {
+  const _echartsInit = echarts.init;
+  echarts.init = function(dom, theme, opts) {
+    const inst = _echartsInit.call(echarts, dom, theme, opts);
+    const _setOption = inst.setOption.bind(inst);
+    inst.setOption = function(opt, notMerge) {
+      if (opt && typeof opt === 'object') {
+        if (opt.grid && !Array.isArray(opt.grid)) {
+          opt.grid.left = Math.min(opt.grid.left || 0, 12);
+          opt.grid.right = Math.min(opt.grid.right || 0, 12);
+          opt.grid.bottom = Math.min(opt.grid.bottom || 0, 36);
+          opt.grid.containLabel = true;
+        }
+        if (opt.legend && !Array.isArray(opt.legend) && opt.legend.textStyle) {
+          opt.legend.textStyle.fontSize = 9;
+          opt.legend.itemWidth = 10;
+          opt.legend.itemHeight = 7;
+        }
+        [].concat(opt.xAxis || []).forEach(ax => {
+          if (ax && ax.axisLabel) { ax.axisLabel.fontSize = 9; ax.axisLabel.interval = 'auto'; }
+        });
+        [].concat(opt.yAxis || []).forEach(ax => {
+          if (ax && ax.axisLabel) ax.axisLabel.fontSize = 9;
+          if (ax && ax.nameTextStyle) ax.nameTextStyle.fontSize = 9;
+        });
+        if (Array.isArray(opt.dataZoom)) opt.dataZoom.forEach(z => {
+          if (z && z.type === 'slider') { z.height = 12; z.bottom = 8; }
+        });
+        (opt.series || []).forEach(s => {
+          if (s && s.markPoint && s.markPoint.label) s.markPoint.label.fontSize = 9;
+          if (s && s.markLine && s.markLine.label) s.markLine.label.fontSize = 9;
+        });
+      }
+      return _setOption(opt, notMerge);
+    };
+    return inst;
+  };
+}
+
+/* MOBILE_JS_END */
 
 const fmt=(v,n=2)=>(v===null||v===undefined||isNaN(v))?'—':Number(v).toFixed(n);
 const sgn=v=>v>0?'+':'';

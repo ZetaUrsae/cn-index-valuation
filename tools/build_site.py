@@ -3,7 +3,7 @@
 
 产物
 ----
-site/index.html                 门户：左侧日期列表 + 右侧 iframe 显示所选日报
+site/index.html                 门户：PC 顶部下拉 / 移动横向 chips 选日期 + iframe 显示所选日报
 site/reports/*.html             最近 N 期正式报告（含 echarts 本地化改写）
 site/assets/echarts.min.js      echarts 本地副本（有则把 CDN 引用改成本地）
 site/assets/cloud-sdk.js        云服务 SDK 本地副本（页面用它读云端报告列表）
@@ -94,16 +94,36 @@ def _download(url, dst, min_size):
         return False
 
 
+def _mobile_blocks():
+    """从 template2.html 取最新的移动端补丁，注入到历史报告的**站点副本**。
+
+    历史报告本体按"冻结不改"原则保持原样；但 site/ 里的副本是发布产物，
+    可以在构建时补上新版 CSS/JS，让手机上回看旧期也有同样体验。
+    """
+    src = open(os.path.join(BASE, "scripts", "template2.html"), encoding="utf-8").read()
+    css = src.split("/* MOBILE_CSS_BEGIN */", 1)[1].split("/* MOBILE_CSS_END */", 1)[0]
+    js = src.split("/* MOBILE_JS_BEGIN */", 1)[1].split("/* MOBILE_JS_END */", 1)[0]
+    return css, js
+
+
 def copy_reports(items, local_echarts):
     dst_dir = os.path.join(SITE, "reports")
     if os.path.isdir(dst_dir):
         shutil.rmtree(dst_dir)
     os.makedirs(dst_dir, exist_ok=True)
+    css, js = _mobile_blocks()
+    css_patch = "/* MOBILE_CSS_BEGIN */\n" + css + "\n/* MOBILE_CSS_END */\n"
+    js_patch = "/* MOBILE_JS_BEGIN */\n" + js + "\n/* MOBILE_JS_END */\n"
     total = 0
     for iso, fn in items:
         txt = open(os.path.join(REPORTS, fn), encoding="utf-8").read()
         if local_echarts:
             txt = txt.replace(ECHARTS_CDN, "../assets/echarts.min.js")
+        # 历史报告没有新版移动端规则时，只在发布副本里补上（不回写 reports/）
+        if "/* MOBILE_CSS_BEGIN */" not in txt:
+            txt = txt.replace("</style>", css_patch + "</style>", 1)
+        if "/* MOBILE_JS_BEGIN */" not in txt and "\nconst fmt=" in txt:
+            txt = txt.replace("\nconst fmt=", "\n" + js_patch + "\nconst fmt=", 1)
         dst = os.path.join(dst_dir, fn)
         open(dst, "w", encoding="utf-8").write(txt)
         total += os.path.getsize(dst)
@@ -123,78 +143,69 @@ TPL = """<!doctype html>
   html,body{height:100%;margin:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
        "Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);}
-  .app{display:grid;grid-template-columns:236px 1fr;height:100vh;height:100dvh;}
-  aside{background:linear-gradient(180deg,#123257,#0d2340);color:#dbe6f5;
-        display:flex;flex-direction:column;min-height:0;}
-  .brand{padding:20px 18px 14px;border-bottom:1px solid rgba(255,255,255,.09);}
-  .brand h1{margin:0;font-size:16px;letter-spacing:.4px;color:#fff;}
-  .brand p{margin:6px 0 0;font-size:11.5px;color:#9db3cf;letter-spacing:.3px;}
-  .brand .gold{display:inline-block;margin-top:10px;padding:2px 8px;border:1px solid rgba(201,162,39,.55);
-        border-radius:3px;font-size:10.5px;color:var(--gold);letter-spacing:1px;}
-  .list{flex:1;overflow-y:auto;padding:8px 0;}
-  .it{display:flex;align-items:center;justify-content:space-between;gap:8px;
-      padding:9px 18px;font-size:13px;color:#c7d7ea;cursor:pointer;
-      border-left:3px solid transparent;transition:background .15s,color .15s;}
-  .it:hover{background:rgba(255,255,255,.06);color:#fff;}
-  .it.on{background:rgba(255,255,255,.10);color:#fff;border-left-color:var(--gold);}
-  .it .d{font-variant-numeric:tabular-nums;letter-spacing:.2px;}
-  .it .tag{font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(201,162,39,.18);
-           color:var(--gold);border:1px solid rgba(201,162,39,.4);}
-  .foot{padding:10px 18px 14px;border-top:1px solid rgba(255,255,255,.09);
-        font-size:11px;color:#8ea6c3;}
-  main{display:flex;flex-direction:column;min-width:0;min-height:0;}
-  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:0;}
+
+  /* PC：顶部工具条 + 全宽 iframe；日期用下拉选 */
+  .top{display:flex;align-items:center;gap:14px;flex:0 0 auto;
        padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line);}
-  .bar .t{font-size:13px;color:var(--muted);}
-  .bar .t b{color:var(--ink);font-variant-numeric:tabular-nums;}
-  .bar .r{display:flex;align-items:center;gap:14px;}
-  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);}
+  .top h1{margin:0;font-size:15px;letter-spacing:.3px;white-space:nowrap;}
+  .top .sub{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+  .top .spacer{flex:1;min-width:8px;}
+  .pick{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);white-space:nowrap;}
+  select#daypick{font:600 13px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+       color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:6px;
+       padding:7px 10px;min-width:160px;cursor:pointer;font-variant-numeric:tabular-nums;}
+  select#daypick:focus{outline:2px solid rgba(201,162,39,.45);outline-offset:1px;}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);white-space:nowrap;}
   .badge i{width:7px;height:7px;border-radius:50%;background:var(--off);display:inline-block;}
   .badge.on i{background:var(--ok);}
-  .bar a{font-size:12.5px;color:var(--navy2);text-decoration:none;white-space:nowrap;}
-  .bar a:hover{text-decoration:underline;}
-  iframe{flex:1;width:100%;border:0;background:var(--card);}
+  .top a{font-size:12.5px;color:var(--navy2);text-decoration:none;white-space:nowrap;}
+  .top a:hover{text-decoration:underline;}
+  iframe{flex:1;min-height:0;width:100%;border:0;background:var(--card);}
+
+  /* 移动端：日期改为横向 chips（与 PC 下拉共用同一份 items） */
+  .list{display:none;}
   @media(max-width:820px){
-    .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
-    .list{display:flex;overflow-x:auto;overflow-y:hidden;padding:6px 8px;}
-    .it{border-left:0;border-bottom:3px solid transparent;white-space:nowrap;padding:8px 10px;}
-    .it.on{border-left:0;border-bottom-color:var(--gold);}
-    .foot{display:none;}
-    .brand{padding:12px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
-    .brand .gold{display:none;}
+    .top{flex-wrap:wrap;gap:8px 10px;padding:10px 12px;}
+    .top h1{font-size:14px;}
+    .top .sub{display:none;}
+    .top .spacer{display:none;}
+    .pick{flex:1;min-width:150px;}
+    select#daypick{width:100%;}
+    .list{display:flex;flex:0 0 auto;overflow-x:auto;overflow-y:hidden;padding:6px 8px;
+          background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);}
+    .it{flex:0 0 auto;white-space:nowrap;padding:7px 10px;font-size:12.5px;color:#c7d7ea;
+        cursor:pointer;border-bottom:3px solid transparent;}
+    .it.on{color:#fff;border-bottom-color:var(--gold);background:rgba(255,255,255,.08);}
+    .it .d{font-variant-numeric:tabular-nums;letter-spacing:.2px;}
+    .it .tag{font-size:10px;margin-left:6px;padding:1px 5px;border-radius:8px;
+             background:rgba(201,162,39,.18);color:var(--gold);border:1px solid rgba(201,162,39,.4);}
   }
 </style>
 </head>
 <body>
 <div class="app">
-  <aside>
-    <div class="brand">
-      <h1>宽基指数 · 多维度分析图</h1>
-      <p>日报归档 · 估值 / 资金 / 情绪 / 技术</p>
-      <span class="gold">DAILY REPORT</span>
-    </div>
-    <div class="list" id="list"></div>
-    <div class="foot">共 <b id="cnt">0</b> 期 · 最新 <b id="last">—</b></div>
-  </aside>
-  <main>
-    <div class="bar">
-      <div class="t">数据日期 <b id="cur">—</b></div>
-      <div class="r">
-        <span class="badge" id="sync"><i></i><span id="syncTxt">连接中…</span></span>
-        <a id="open" href="#" target="_blank" rel="noopener">新窗口打开 ↗</a>
-      </div>
-    </div>
-    <iframe id="frame" src="" title="报告"></iframe>
-  </main>
+  <div class="top">
+    <h1>宽基指数 · 多维度分析图</h1>
+    <span class="sub">日报归档 · 估值 / 资金 / 情绪 / 技术</span>
+    <span class="spacer"></span>
+    <label class="pick">数据日期
+      <select id="daypick" aria-label="选择报告日期"></select>
+    </label>
+    <span class="badge" id="sync"><i></i><span id="syncTxt">连接中…</span></span>
+    <a id="open" href="#" target="_blank" rel="noopener">新窗口打开 ↗</a>
+  </div>
+  <div class="list" id="list"></div>
+  <iframe id="frame" src="" title="报告"></iframe>
 </div>
 <script src="assets/cloud-sdk.js"></script>
 <script>
 var SNAPSHOT = __ITEMS__;
 var CLOUD = __CLOUD__;
 
+var daypick = document.getElementById('daypick');
 var list = document.getElementById('list');
 var frame = document.getElementById('frame');
-var cur = document.getElementById('cur');
 var open = document.getElementById('open');
 var items = [];
 var picked = 0;
@@ -209,8 +220,8 @@ function pick(i) {
   picked = i;
   var it = items[i];
   frame.src = it.f;
-  cur.textContent = it.d;
   open.href = it.f;
+  daypick.value = String(i);
   var nodes = list.querySelectorAll('.it');
   for (var k = 0; k < nodes.length; k++) nodes[k].className = 'it' + (k === i ? ' on' : '');
   if (history.replaceState) history.replaceState(null, '', '#' + it.d);
@@ -218,7 +229,13 @@ function pick(i) {
 
 function render() {
   list.innerHTML = '';
+  daypick.innerHTML = '';
   items.forEach(function (it, i) {
+    var opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = it.d + (i === 0 ? '（最新）' : '');
+    daypick.appendChild(opt);
+
     var el = document.createElement('div');
     el.className = 'it';
     el.innerHTML = '<span class="d">' + it.d + '</span>' +
@@ -226,8 +243,7 @@ function render() {
     el.onclick = function () { pick(i); };
     list.appendChild(el);
   });
-  document.getElementById('cnt').textContent = items.length;
-  document.getElementById('last').textContent = items.length ? items[0].d : '—';
+  daypick.onchange = function () { pick(parseInt(daypick.value, 10)); };
   var start = 0;
   if (location.hash) {
     var h = location.hash.slice(1);
@@ -274,6 +290,8 @@ async function fromCloud() {
 </body>
 </html>
 """
+
+
 
 
 def write_index(items, cloud):
