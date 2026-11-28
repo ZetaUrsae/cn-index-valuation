@@ -35,7 +35,9 @@ def test_template_has_mobile_patch_markers():
     css = tpl.split("MOBILE_CSS_BEGIN", 1)[1].split("MOBILE_CSS_END", 1)[0]
     for rule in ("grid-template-columns:1fr", "mob-cards", ".note.folded",
                  "header .idxlist{display:none;}", ".sec-title .en{display:none;}",
-                 "#tb-fut td:first-child"):
+                 "#tb-fut td.fut-name", "#t-fut td:first-child:not(.fut-name)",
+                 "#t-matrix.mob-cards tr{display:grid",
+                 "details.mob-fold>summary:not(.sum-hint)::after"):
         assert rule in css, rule
 
     # 护栏：标记块内的每一条 CSS 规则都必须落在 @media 里，防止 PC 端被误伤。
@@ -63,9 +65,15 @@ def test_template_has_mobile_patch_markers():
                  "background:linear-gradient(180deg,#16345f,#12294b);}"):
         assert rule in css, rule
     assert "d.open = false;" in js               # 移动端默认收起 .mob-fold
-    # 折叠结构：foot 两端折叠（无 open）；三处 mob-fold 带 open（PC 展开）
+    # 折叠结构：foot 两端折叠（无 open）；四处 mob-fold 带 open（PC 展开）
     assert '<details class="foot-fold">' in tpl
-    assert tpl.count('<details class="mob-fold" open>') == 3
+    assert tpl.count('<details class="mob-fold" open>') == 4
+    # 矩阵卡片短标签（去掉表头括号注释）
+    assert "s.replace(/（[^）]*）/g, '')" in js
+    # 估值状态说明：点明指标与窗口即可，分档沿用图例、不重复
+    assert "估值状态</b>按 <b>PE(TTM) 近10年分位</b>判定（分档见下方图例）" in tpl
+    _vnote = tpl.split('· <b>估值状态</b>', 1)[1].split('</div>', 1)[0]
+    assert "20%" not in _vnote and "高估" not in _vnote
     # 措辞：偏低估已改偏低（模板图例 + gen2 状态函数）
     assert "偏低估" not in tpl
     gen2 = _read("scripts/gen2.py")

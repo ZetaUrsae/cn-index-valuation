@@ -195,8 +195,21 @@
     /* 左上角 sticky 表头与其他表头同底色（原来浅灰 #f5f7fa 与深蓝表头割裂） */
     .tblwrap table thead th:first-child{z-index:3;background:linear-gradient(180deg,#16345f,#12294b);}
     .c-sub,.note{font-size:11px;line-height:1.65;}
+    /* 期货表 rowspan：只有「品种/现货」是首列，后续行的 first-child 其实是「期限」胶囊 */
+    #t-fut td:first-child:not(.fut-name){position:static;box-shadow:none;}
     /* 四维信号矩阵：移动端隐藏「综合解读」长文字列，避免挤压变形 */
     #t-matrix th:nth-child(6),#t-matrix td:nth-child(6){display:none !important;}
+    /* 信号矩阵专用紧凑网格：指数名作标题，四个信号 2×2，标签与 pill 横向并排 */
+    #t-matrix.mob-cards tr{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    #t-matrix.mob-cards td{display:flex;align-items:center;justify-content:space-between;
+      gap:6px;padding:4px 7px;background:#f6f8fc;border-radius:6px;font-size:11px;}
+    #t-matrix.mob-cards td::before{margin:0;font-size:10px;white-space:nowrap;}
+    #t-matrix.mob-cards td:first-child{grid-column:1/-1;background:transparent;padding:0 0 2px;font-weight:700;}
+    #t-matrix.mob-cards td:first-child::before{display:none;}
+    /* 折叠块开合提示（总结已有静态文字，跳过） */
+    details.mob-fold>summary:not(.sum-hint)::after{content:"▸ 点击展开";margin-left:auto;
+      font-size:11px;font-weight:500;color:var(--primary);}
+    details.mob-fold[open]>summary:not(.sum-hint)::after{content:"▾ 点击收起";}
     /* 总结正文再收一档（PC 13px / 移动 12px） */
     #sum-card p:not(.note){font-size:12px;line-height:1.68;}
     /* 移动端折叠摘要可见（PC 端由全局 .sum-hint{display:none} 隐藏） */
@@ -247,8 +260,8 @@
     .kpi .k .kclose{font-size:10.5px;}
     table{font-size:11px;}
     thead th,tbody td{padding:6px 7px;}
-    /* 期货表首列收紧，给其余 7 列数字让位 */
-    #tb-fut td:first-child{max-width:88px;white-space:normal;font-size:10.5px;}
+    /* 期货表「品种」首列收紧（只作用于 rowspan 单元格，不影响后续行的期限列） */
+    #tb-fut td.fut-name{max-width:88px;white-space:normal;font-size:10.5px;}
     .chart{height:240px !important;}
   }
 
@@ -297,7 +310,7 @@
     </table>
   </div></div>
   <div class="legend" id="lg-val"></div>
-  <div class="note">· PB(LF) 为最新报告期口径；<b>隐含ROE ≈ PB / PE(TTM)</b>，用于横向比较成分盈利能力，非官方披露值。· <b>股债性价比</b>＝盈利收益率(1/PE-TTM) − 10年期国债收益率（<span id="bond">—</span>）。· <b>点位分位</b>＝当日收盘在近10年日频收盘价中的分位（科创50 自 2020-07 上市起），与 PE/PB 分位口径相互印证。<span id="closemed"></span></div>
+  <div class="note">· <b>估值状态</b>按 <b>PE(TTM) 近10年分位</b>判定（分档见下方图例），PB 分位与点位分位仅作交叉印证；PB(LF) 为最新报告期口径；<b>隐含ROE ≈ PB / PE(TTM)</b>，用于横向比较成分盈利能力，非官方披露值。· <b>股债性价比</b>＝盈利收益率(1/PE-TTM) − 10年期国债收益率（<span id="bond">—</span>）。· <b>点位分位</b>＝当日收盘在近10年日频收盘价中的分位（科创50 自 2020-07 上市起），与 PE/PB 分位口径相互印证。<span id="closemed"></span></div>
 
   <!-- 估值走势：PE/PB Band -->
   <div class="sub-title"><span class="badge">估值走势</span>PE/PB Band（估值带） <span class="hint">Wind 式：均值 ±1σ/±2σ × 当期 EPS(TTM) / BPS</span></div>
@@ -375,7 +388,7 @@
     <div id="cFUT" class="chart"></div>
     <div class="c-sub" style="margin:6px 0 0;">0 轴＝升贴水平衡；线下为<b>贴水</b>（期货折价，常反映对冲需求旺盛、情绪偏谨慎），线上为<b>升水</b>（情绪偏乐观）</div>
     <div class="c-title" style="font-size:13px;margin-top:14px;">全存续合约贴水（<span id="fut-asof">—</span>）</div>
-    <div class="tblwrap" style="margin-top:9px;"><table>
+    <div class="tblwrap" style="margin-top:9px;"><table id="t-fut">
       <thead><tr>
         <th class="l">品种 / 现货</th><th class="c">期限</th><th class="c">合约</th><th>期货收盘</th>
         <th>基差<span style="font-weight:400;font-size:10px;">(点)</span></th>
@@ -400,7 +413,8 @@
   <div class="note">· 量比 ＝ 最新成交量 / 近20日平均成交量。· K线形态由最新交易日实体与影线结构、均线排列、连续阴阳线自动生成描述。</div>
 
   <!-- 五、四维信号矩阵 -->
-  <div class="sec-title">五、四维信号矩阵 <span class="en">Signal Matrix</span></div>
+  <details class="mob-fold" open>
+    <summary class="sec-title">五、四维信号矩阵 <span class="en">Signal Matrix</span></summary>
   <div class="card"><div class="tblwrap">
     <table id="t-matrix">
       <thead><tr>
@@ -410,6 +424,7 @@
     </table>
   </div></div>
   <div class="legend" id="lg-dim"></div>
+  </details>
 
   <!-- 机构展望（第五章节内，信号矩阵之后） -->
   <details class="mob-fold" open>
@@ -504,6 +519,10 @@ if (MOBILE_CHART) {
     table.classList.add('mob-cards');
     var heads = Array.prototype.map.call(table.querySelectorAll('thead th'),
       function(th) { return (th.textContent || '').trim(); });
+    /* 信号矩阵：卡片内标签只留短名（基本面/资金面/情绪面/技术面），去掉括号注释 */
+    if (pair[0] === 'tb-matrix') {
+      heads = heads.map(function(s) { return s.replace(/（[^）]*）/g, ''); });
+    }
     Array.prototype.forEach.call(tb.querySelectorAll('tr'), function(tr) {
       Array.prototype.forEach.call(tr.querySelectorAll('td'), function(td, i) {
         td.setAttribute('data-lbl', heads[i] || '');
