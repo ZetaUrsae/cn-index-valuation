@@ -173,6 +173,8 @@ TPL = """<!doctype html>
     select#daypick{width:100%;}
     /* 同步状态缩成圆点，给下拉让位 */
     #syncTxt{display:none;}
+    /* 手机端隐藏「新窗口打开」，日期下拉独占一行（PC 保留该入口） */
+    #open{display:none;}
   }
 </style>
 </head>

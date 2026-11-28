@@ -49,7 +49,7 @@ def status(p):
     if p < 20:
         return ("低估", "s1")
     if p < 40:
-        return ("偏低估", "s2")
+        return ("偏低", "s2")
     if p < 60:
         return ("适中", "s3")
     if p < 80:
