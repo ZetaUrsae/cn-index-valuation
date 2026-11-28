@@ -12,10 +12,10 @@ def _read(rel):
         return f.read()
 
 
-def test_portal_has_pc_dropdown_and_mobile_chips():
+def test_portal_uses_single_dropdown():
     tpl = _read("tools/build_site.py")
-    assert 'id="daypick"' in tpl              # PC 下拉
-    assert 'id="list"' in tpl                 # 移动 chips
+    assert 'id="daypick"' in tpl              # 顶部下拉（PC 与手机共用）
+    assert 'id="list"' not in tpl             # 移动端 chips 已移除
     assert 'daypick.onchange' in tpl          # 切换联动
     assert '__ITEMS__' in tpl and '__CLOUD__' in tpl   # 数据源占位符未丢
 

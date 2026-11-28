@@ -3,7 +3,7 @@
 
 产物
 ----
-site/index.html                 门户：PC 顶部下拉 / 移动横向 chips 选日期 + iframe 显示所选日报
+site/index.html                 门户：顶部下拉选日期 + iframe 显示所选日报（PC / 手机同一控件）
 site/reports/*.html             最近 N 期正式报告（含 echarts 本地化改写）
 site/assets/echarts.min.js      echarts 本地副本（有则把 CDN 引用改成本地）
 site/assets/cloud-sdk.js        云服务 SDK 本地副本（页面用它读云端报告列表）
@@ -163,8 +163,7 @@ TPL = """<!doctype html>
   .top a:hover{text-decoration:underline;}
   iframe{flex:1;min-height:0;width:100%;border:0;background:var(--card);}
 
-  /* 移动端：日期改为横向 chips（与 PC 下拉共用同一份 items） */
-  .list{display:none;}
+  /* 移动端：沿用顶部下拉选日期，不另设横向 chips（v2.7.9） */
   @media(max-width:820px){
     .top{flex-wrap:wrap;gap:8px 10px;padding:10px 12px;}
     .top h1{font-size:14px;}
@@ -172,14 +171,6 @@ TPL = """<!doctype html>
     .top .spacer{display:none;}
     .pick{flex:1;min-width:150px;}
     select#daypick{width:100%;}
-    .list{display:flex;flex:0 0 auto;overflow-x:auto;overflow-y:hidden;padding:6px 8px;
-          background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);}
-    .it{flex:0 0 auto;white-space:nowrap;padding:7px 10px;font-size:12.5px;color:#c7d7ea;
-        cursor:pointer;border-bottom:3px solid transparent;}
-    .it.on{color:#fff;border-bottom-color:var(--gold);background:rgba(255,255,255,.08);}
-    .it .d{font-variant-numeric:tabular-nums;letter-spacing:.2px;}
-    .it .tag{font-size:10px;margin-left:6px;padding:1px 5px;border-radius:8px;
-             background:rgba(201,162,39,.18);color:var(--gold);border:1px solid rgba(201,162,39,.4);}
   }
 </style>
 </head>
@@ -195,7 +186,6 @@ TPL = """<!doctype html>
     <span class="badge" id="sync"><i></i><span id="syncTxt">连接中…</span></span>
     <a id="open" href="#" target="_blank" rel="noopener">新窗口打开 ↗</a>
   </div>
-  <div class="list" id="list"></div>
   <iframe id="frame" src="" title="报告"></iframe>
 </div>
 <script src="assets/cloud-sdk.js"></script>
@@ -204,7 +194,6 @@ var SNAPSHOT = __ITEMS__;
 var CLOUD = __CLOUD__;
 
 var daypick = document.getElementById('daypick');
-var list = document.getElementById('list');
 var frame = document.getElementById('frame');
 var open = document.getElementById('open');
 var items = [];
@@ -222,26 +211,16 @@ function pick(i) {
   frame.src = it.f;
   open.href = it.f;
   daypick.value = String(i);
-  var nodes = list.querySelectorAll('.it');
-  for (var k = 0; k < nodes.length; k++) nodes[k].className = 'it' + (k === i ? ' on' : '');
   if (history.replaceState) history.replaceState(null, '', '#' + it.d);
 }
 
 function render() {
-  list.innerHTML = '';
   daypick.innerHTML = '';
   items.forEach(function (it, i) {
     var opt = document.createElement('option');
     opt.value = String(i);
     opt.textContent = it.d + (i === 0 ? '（最新）' : '');
     daypick.appendChild(opt);
-
-    var el = document.createElement('div');
-    el.className = 'it';
-    el.innerHTML = '<span class="d">' + it.d + '</span>' +
-                   (i === 0 ? '<span class="tag">最新</span>' : '');
-    el.onclick = function () { pick(i); };
-    list.appendChild(el);
   });
   daypick.onchange = function () { pick(parseInt(daypick.value, 10)); };
   var start = 0;
