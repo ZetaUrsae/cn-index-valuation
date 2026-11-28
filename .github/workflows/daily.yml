@@ -4,9 +4,11 @@
 # 本 workflow 在云端独立跑一遍同样管线，产物推到 actions 分支 + 报告存 artifact，
 # 与本地同日产出做交叉对照。actions 分支永不合并回 main。
 #
-# 时区换算：UTC 22:16 = 北京时间次日 06:16；cron 用 UTC 周日至周四（0-4），
-# 对应北京周一至周五的工作日。GitHub cron 有 5~30 分钟抖动，属正常；
-# 分钟刻意避开整点（整点是全站调度高峰，实测 22:00 那次被直接丢弃）。
+# 时区换算：UTC 22:16 = 北京时间次日 06:16；cron 用 UTC 周一至周五（1-5），
+# 对应北京周二至周六，与本地 automation（TU-SA 06:00）的工作日集合一致。
+# GitHub cron 有 5~30 分钟抖动，实测调度延迟常达 4~8 小时（免费公共仓库特性），
+# 故本线只作并行观察、不作准点交付；分钟刻意避开整点（整点是全站调度高峰，
+# 实测 22:00 那次被直接丢弃）。
 #
 # 报告查看：actions 分支已开 GitHub Pages（仓库 Settings → Pages），
 # 根地址即最新一次观察运行的报告（每次运行把最新报告复制成根 index.html）；
@@ -16,7 +18,7 @@ name: Daily observe run
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '16 22 * * 0-4'
+    - cron: '16 22 * * 1-5'
 
 permissions:
   contents: write

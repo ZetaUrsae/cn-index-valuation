@@ -9,8 +9,10 @@
 
 **在线查看**
 
-- 正式日报（本地权威线，含历史各期）：<https://index-valuation-daily-10055.app.workbuddy.host/?sharecode=WSS7KSLIGL>
-- 观察线快照（云端每日独立跑，最新一期）：<https://zetaursae.github.io/cn-index-valuation/>
+| 用途 | 地址与说明 |
+|---|---|
+| 正式日报（本地权威线，历史各期可选） | <https://index-valuation-daily-10055.app.workbuddy.host/?sharecode=WSS7KSLIGL> —— 链接**必须带 `?sharecode=WSS7KSLIGL`**，否则 403；`tools/build_site.py` 生成，保留最近 10 期 + 每月首个交易日 |
+| 观察线快照（云端每日独立跑，最新一期） | <https://zetaursae.github.io/cn-index-valuation/> —— 源为 `actions` 分支，根地址＝最新一期 `_gh` 报告；该分支由 workflow 每次 force-push 整体覆盖，本地永不推它 |
 
 产出：`reports/index_val_report_<日期>.html`
 
@@ -25,8 +27,8 @@
 单页长报告，自上而下固定顺序（不随数据变化），依次覆盖估值、股债性价比、资金、情绪、技术五个维度：
 
 - **核心指标速览** —— 五指数点位、PE 分位与点位分位（顶部卡片取近 5 年、表内取近 10 年，刻意对照）；
-- **一、基本面（估值）** —— 估值总表：PE(TTM)、PB 及**近 10 年分位**、点位分位、隐含 ROE（≈PB/PE）；
-  PE/PB Band（3 / 5 / 10 年窗口）；沪深300 ERP（＝1/PE − 10 年期国债收益率）2015 年以来走势，
+- **一、基本面（估值）** —— 估值总表：PE(TTM)、PB 及**近 10 年分位**、点位分位、隐含 ROE（≈PB/PE），
+  "估值状态"按 PE(TTM) 近 10 年分位判定；PE/PB Band（3 / 5 / 10 年窗口）；沪深300 ERP（＝1/PE − 10 年期国债收益率）2015 年以来走势，
   含均值、±1σ、历史分位与关键极值标注；
 - **二、资金面** —— 对应宽基 ETF 的份额及 5 / 20 / 60 日变化与走势（全部 / 近三年 / 近一年可切）；
 - **三、情绪面** —— 期权持仓 PCR（认沽/认购）走势与历史分位；其后是 IH / IF / IC / IM
@@ -35,7 +37,8 @@
 - **五、四维信号矩阵与机构展望** —— 逐指数逐维度打标汇总，以及近期外资投行公开观点；
 - **总结** —— 各指数处于什么位置、哪边更值得关注。
 
-版式与口径约定见 [docs/DATA.md](docs/DATA.md) 第二部分。
+版式与口径约定（章节顺序、红涨绿跌、日期标注规则）见 [docs/DATA.md](docs/DATA.md) 第二部分末尾；
+改版式请改 `scripts/template2.html`，不要手改报告。
 
 ---
 
@@ -45,11 +48,10 @@
 # 依赖：Python 3.13 + requests / pandas / numpy
 pip install -r requirements.txt
 
-# 下面两行为作者本机环境，换机器按自己的路径替换
-PY=C:/Users/zky12/.workbuddy/binaries/python/envs/default/Scripts/python.exe
-cd D:/QClaw/Stock/index_valuation
+# PY 换成你本机的 Python 解释器路径；在项目根目录（本仓库克隆处）执行
+PY=python
 
-$PY run_daily.py                        # 日常跑一次（约 25 秒，21 发 HTTP）
+$PY run_daily.py                        # 日常跑一次（约 10~30 秒，21 发 HTTP）
 $PY run_daily.py --check                # 只判重：RUN / SKIP
 $PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，不参与判重
 ```
@@ -57,7 +59,7 @@ $PY run_daily.py --tag test             # 试运行：产物带 _test 后缀，�
 每次正式运行后会把当期报告复制为 `reports/latest.html`（本地固定入口，已在 `.gitignore` 中，
 只是本机便利、不进版本库），收藏这一个文件即可，不必每天改日期戳。
 
-日常运行完全自动（定时任务周一至五 06:00），无需人工干预。
+日常运行完全自动（本地定时任务周二至六 06:00，权威线），无需人工干预。
 完整命令、环境变量、故障排查见 [docs/RUNBOOK.md](docs/RUNBOOK.md)；定时任务每日执行清单见 [docs/DAILY.md](docs/DAILY.md)。
 
 ### 测试与检查
@@ -68,9 +70,9 @@ python -m ruff check .                  # 静态检查（语法 + 未定义名/�
 python -m pytest -q                     # 单元测试，约 1 秒
 ```
 
-`tests/` 覆盖四类"静默失效"：配置契约（DOMAINS 里的每个源都注册过）、
-归一化单位换算（股/手、元/万元）、日期工具（月末夹取、闰年跨年）、
-报告保留与判重（该归档的归档、该跳过的不重复跑）。
+`tests/` 覆盖多类"静默失效"：配置契约（DOMAINS 里的每个源都注册过）、归一化单位换算（股/手、元/万元）、
+日期工具（月末夹取、闰年跨年）、报告保留与判重、路径唯一性、动态总结文案与站点构建护栏
+（新移动端 CSS 不得污染 PC），现 47 例、零联网零数据依赖。
 `.github/workflows/ci.yml` 在每次 push 和 PR 上跑这两步，约 20 秒。
 
 ---
@@ -81,6 +83,8 @@ python -m pytest -q                     # 单元测试，约 1 秒
 - **多源降级**：每个数据域配一条优先级链，主源失败自动切备源，单点故障不会让当天报告开天窗。
 - **历史只增不改**：已入库的历史永不重拉重算（2015–2017 段建库时写定后冻结），每日运行只追加增量。
 - **留痕可复核**：每次运行记录各数据域的实际来源与耗时（`work/provenance.json`），报告页脚标注数据日期。
+- **历史报告只读不改**：已产出的报告是快照，口径、文案、脚注的调整只作用于当期及以后；超出保留期的报告
+  （最近 10 期 + 每月首个交易日之外）由每日运行自动移入 `reports/archive/`，失败只告警、不影响交付。
 
 实现细节（分层、契约、调度语义）见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
@@ -93,7 +97,7 @@ python -m pytest -q                     # 单元测试，约 1 秒
 | 想做什么 | 看哪份 |
 |----------|--------|
 | 了解项目、跑起来 | 本文件 |
-| **定时任务每天照着执行**（判重 → 出报告 → 写观点 → 自检 → 推送 GitHub） | [docs/DAILY.md](docs/DAILY.md) |
+| **定时任务每天照着执行**（判重 → 出报告 → 写观点 → 自检 → 推送 GitHub） | [docs/DAILY.md](docs/DAILY.md)（WorkBuddy 定时任务 `Index Valuation Daily`，id `f3a34004-…`，周二至六 06:00） |
 | 手工运行、环境变量、数据文件清单、排障、改动后验收 | [docs/RUNBOOK.md](docs/RUNBOOK.md) |
 | 查某个数字从哪来：数据源接口/单位/口径 + 报告章节映射 | [docs/DATA.md](docs/DATA.md) |
 | 改取数层代码、加数据源、理解调度语义 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
@@ -120,14 +124,17 @@ index_valuation/
 │   ├── store.py            JSON / CSV 读写
 │   └── providers/          sina / em / exchange / csi / local
 ├── scripts/                加工与排版（v1 原样复用）
-├── tests/                  单元测试（pytest，零联网、零数据依赖）
+├── tests/                  单元测试（pytest，47 例，零联网、零数据依赖）
 ├── tools/                  辅助工具（站点构建等）
 ├── data/                   历史库（增量缓存）⚠ 禁删，详见 RUNBOOK 第四节
 ├── work/                   中间产物（可整体清空）
+├── site/                   发布站构建产物（build_site.py 生成，不手改）
 ├── assets/echarts.min.js   图表库本地副本（Actions 报告内联用，避免 CDN）
-├── .github/workflows/      Actions 并行观察线（daily.yml）
+├── .github/workflows/      Actions 并行观察线（daily.yml）与 CI（ci.yml）
 └── reports/                报告产出（根目录＝最近 10 期 + 每月首个交易日，其余在 archive/）
 ```
+
+一次性修正工具 `recompute_sharpe.py`、`reorder.py` 为非管线脚本，平时不用。
 
 ---
 
@@ -142,44 +149,15 @@ index_valuation/
 Pages 自动重建。定义见 [.github/workflows/daily.yml](.github/workflows/daily.yml)。
 两条线的 `data/` **各自生长、互不回写**，同日两份报告用于交叉校验数据源稳定性。
 
----
-
-## 其他约定
-
-- **报告版式与口径约定**（章节顺序、红涨绿跌、日期标注规则）见
-  [docs/DATA.md](docs/DATA.md) 第二部分末尾（原 REPORT_DATA_MAP 第五节）；
-  改版式请改 `scripts/template2.html`，不要手改报告。
-- **定时任务**：WorkBuddy 定时任务 `Index Valuation Daily`（id `f3a34004-…`），
-  五步流程见 [docs/DAILY.md](docs/DAILY.md)。
-- **历史报告只读不改**：已产出的报告是快照，口径、文案、脚注的调整只作用于当期及以后，
-  不回改旧报告；超出保留期的报告（最近 10 期 + 每月首个交易日之外）由每日运行**自动**
-  移入 `reports/archive/`（与站点保留策略同一套规则），失败只告警、不影响交付。
-- **非管线脚本**：`recompute_sharpe.py`、`reorder.py`（一次性修正工具）。
-- **在线查看**：
-  - **正式报告** → WorkBuddy 发布站：<https://index-valuation-daily-10055.app.workbuddy.host/?sharecode=WSS7KSLIGL>
-    （`tools/build_site.py` 生成，echarts 本地化；保留每月首个交易日 + 最近 10 期）。
-    链接**必须带 `?sharecode=WSS7KSLIGL`**，不带会 403。
-  - **观察线** → GitHub Pages：<https://zetaursae.github.io/cn-index-valuation/>
-    （源为 `actions` 分支，根地址＝最新一期 `_gh` 报告，历史各期在 `reports/index_val_report_<日期>_gh.html`；
-    该分支由 workflow 每次运行 force-push 整体覆盖，本地永不推它）。
+云端定时为 UTC 周一至周五 22:16（＝北京周二至周六 06:16），工作日集合与本地一致；
+但免费公共仓库的调度常延迟 4~8 小时，实际触发多在上午至下午，故这条线只作观察、不作准点交付。
 
 ---
 
 ## 变更记录摘要
 
-- **2026-11-11 v2.7.4**：GitHub Actions 并行观察线上线（云端每日独立跑一遍、产物推 `actions` 分支、Pages 发布）；仓库转公开；脚本路径改 `__file__` 推导（可移植）；Tushare 相关代码与文档全量移除（历史数据保留沿用）
-- 2026-11-11 v2.7.3：站点保留策略＝每月首个交易日锚点 + 最近 10 期
-- 2026-11-10 v2.7.2：移动端适配（仅 ≤640px 断点，桌面零影响）
-- 2026-11-03 v2.7.1：报告发布为在线站点（`tools/build_site.py`，echarts/SDK 本地化）
-- 2026-10-28 v2.7.0：机构展望表改「状态 + 观点变化」；2026-10-27 v2.6.7–2.6.8：版式改造（删头部说明、ERP 默认近十年、期货表期限胶囊与年化条、KPI 卡带温度条）
-- **2026-10-27 v2.6.6**：修复 10-27 06:00 定时任务失败——期货环节死循环（季月游标不前进）、CUR 数据结构错、`push2his` 被拒；取数加超时收紧与熔断，close_hist/中证1000 现货接新浪兜底
-- **2026-10-26 v2.6.5**：情绪面新增「股指期货当月基差」（IH/IF/IC/IM 升贴水走势+读数条，PCR 之后）；新取数脚本 fetch_futures.py（新浪合约拼接当月连续+中证1000 现货）
-- **2026-10-26 v2.6.4**：文档体系精简为 6 份（DAILY.md 每日执行清单 / DATA.md 合并 / INDEX 并入本文件）；项目备份至 GitHub 私有仓库，定时任务新增每日推送步骤（单次尝试、失败下次补推）
-- 2026-10-23 v2.6.3：核心估值表加「点位分位」列；表下小字展示沪深300/中证500/创业板指近十年+近五年点位中位数；总市值列删除
-- 2026-10-21 v2.6.0–2.6.2：ERP 图与读数条可交互（指数×窗口）；PE/PB Band 上线（v2.5.9）；份额/PCR 走势加三档时间窗口；机构观点时效规则（当月或上月+核实日期）
-- 2026-10-21 v2.4–2.5：深市 PCR 改单边原值落库（可复核优先）；核心估值表加点位分位探索；提示词分工原则确立（提示词只写意图，细节在文档）
-- 2026-10-21 v2.2–2.3：深市份额缺口由深交所区间报表自动回补；只取增量改造（21 发 HTTP/13s）
-- 2026-10-20 v2.0–2.1：取数层重构为 `ivdata/` 框架；日报化（周一至五 06:00）
-- 2026-10-15 v1.8：加入 ERP 专题；打通 10Y 国债自动来源
+- **2026-11-28 v2.9.1**：移动端期货贴水表期限列不再浮动（rowspan + sticky 精确化）；信号矩阵改 2×2 紧凑网格并默认折叠、补开合提示；核心估值表小字补估值状态判定口径
+- **2026-11-28 v2.9.0**：数据来源/免责、总结、机构展望、ERP 读数默认折叠（仅移动端）；措辞「偏低估→偏低」；门户「新窗口打开」手机隐藏
+- **2026-11-28 v2.8.0**：移动端打磨 + 干净网址日期选择（hash 仅在主动切换时写入）；KPI 一行一个、长文字表卡片化
 
 完整记录见 [docs/CHANGELOG.md](docs/CHANGELOG.md)（v2.3.2 及更早压缩为归档摘要表，原文在 git 历史）。
