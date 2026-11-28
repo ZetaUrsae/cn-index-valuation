@@ -160,8 +160,6 @@
      mob-fold 复用现有标题元素当 summary，故不加 ::before 箭头（避免覆盖 .sec-title 竖条）。 */
   details>summary{cursor:pointer;list-style:none;}
   details>summary::-webkit-details-marker{display:none;}
-  /* 总结折叠摘要：仅移动端显示，PC 端 details 保持 open 且摘要隐藏 */
-  details.mob-fold>summary.sum-hint{display:none;}
   details.foot-fold>summary{padding:2px 0;font-weight:700;color:var(--navy);}
   details.foot-fold>summary::before{content:"▸ ";color:var(--faint);font-size:.9em;font-weight:400;}
   details.foot-fold[open]>summary::before{content:"▾ ";}
@@ -206,14 +204,12 @@
     #t-matrix.mob-cards td::before{margin:0;font-size:10px;white-space:nowrap;}
     #t-matrix.mob-cards td:first-child{grid-column:1/-1;background:transparent;padding:0 0 2px;font-weight:700;}
     #t-matrix.mob-cards td:first-child::before{display:none;}
-    /* 折叠块开合提示（总结已有静态文字，跳过） */
-    details.mob-fold>summary:not(.sum-hint)::after{content:"▸ 点击展开";margin-left:auto;
+    /* 折叠块开合提示：总结/机构展望/ERP/矩阵统一在标题右侧显示 */
+    details.mob-fold>summary::after{content:"▸ 点击展开";margin-left:auto;
       font-size:11px;font-weight:500;color:var(--primary);}
-    details.mob-fold[open]>summary:not(.sum-hint)::after{content:"▾ 点击收起";}
+    details.mob-fold[open]>summary::after{content:"▾ 点击收起";}
     /* 总结正文再收一档（PC 13px / 移动 12px） */
     #sum-card p:not(.note){font-size:12px;line-height:1.68;}
-    /* 移动端折叠摘要可见（PC 端由全局 .sum-hint{display:none} 隐藏） */
-    details.mob-fold>summary.sum-hint{display:block;}
     /* 触控目标 ≥32px，避免手指点不中 */
     .seg button{font-size:11.5px;min-height:32px;padding:6px 10px;}
     .tblwrap::after{content:"← 左右滑动查看完整表格 →";display:block;position:sticky;left:0;
@@ -309,8 +305,7 @@
       <tbody id="tb-val"></tbody>
     </table>
   </div></div>
-  <div class="legend" id="lg-val"></div>
-  <div class="note">· <b>估值状态</b>按 <b>PE(TTM) 近10年分位</b>判定（分档见下方图例），PB 分位与点位分位仅作交叉印证；PB(LF) 为最新报告期口径；<b>隐含ROE ≈ PB / PE(TTM)</b>，用于横向比较成分盈利能力，非官方披露值。· <b>股债性价比</b>＝盈利收益率(1/PE-TTM) − 10年期国债收益率（<span id="bond">—</span>）。· <b>点位分位</b>＝当日收盘在近10年日频收盘价中的分位（科创50 自 2020-07 上市起），与 PE/PB 分位口径相互印证。<span id="closemed"></span></div>
+  <div class="note">· <b>估值状态</b>按 <b>PE(TTM) 近10年分位</b>判定：低估(&lt;20%)、偏低(20–40%)、适中(40–60%)、偏高(60–80%)、高估(&gt;80%)；PB 分位与点位分位仅作交叉印证。· PB(LF) 为最新报告期口径；<b>隐含ROE ≈ PB / PE(TTM)</b>，用于横向比较成分盈利能力，非官方披露值。· <b>股债性价比</b>＝盈利收益率(1/PE-TTM) − 10年期国债收益率（<span id="bond">—</span>）。· <b>点位分位</b>＝当日收盘在近10年日频收盘价中的分位（科创50 自 2020-07 上市起），与 PE/PB 分位口径相互印证。<span id="closemed"></span></div>
 
   <!-- 估值走势：PE/PB Band -->
   <div class="sub-title"><span class="badge">估值走势</span>PE/PB Band（估值带） <span class="hint">Wind 式：均值 ±1σ/±2σ × 当期 EPS(TTM) / BPS</span></div>
@@ -365,7 +360,7 @@
   <div class="note">· 份额单位亿份，变化同时以<b>亿份</b>与<b>百分比</b>列示；数据来自基金份额接口，含申赎与可能的份额折算因素，精确数据以基金公司公告为准。</div>
 
   <!-- 三、情绪面 -->
-  <div class="sec-title">三、情绪面：持仓 PCR <span class="en">Sentiment · PCR</span><span class="hint">数值越低＝看跌保护需求越弱、情绪越偏乐观</span></div>
+  <div class="sec-title">三、情绪面：持仓 PCR <span class="en">Sentiment · PCR</span><span class="hint">数值越低＝情绪越偏乐观</span></div>
   <div class="card" style="padding:16px 18px 8px;">
     <div class="c-title">持仓 PCR 走势</div>
     <div class="band-ctl"><div class="seg" id="pcr-win"></div></div>
@@ -428,7 +423,7 @@
 
   <!-- 机构展望（第五章节内，信号矩阵之后） -->
   <details class="mob-fold" open>
-    <summary class="sub-title" style="margin-top:18px;"><span class="badge">机构展望</span>外资投行观点（按机构）<span class="hint">非一手来源，需核实原文</span></summary>
+    <summary class="sub-title" style="margin-top:18px;"><span class="badge">机构展望</span>外资投行观点（按机构）</summary>
   <div class="card"><div class="tblwrap">
     <table>
       <thead><tr>
@@ -440,9 +435,8 @@
   <div class="note">· 按<b>机构</b>组织，一家一行，<b>按发布日从新到旧</b>排列；只收录<b>外资投行</b>（高盛、摩根士丹利、摩根大通、瑞银、野村、花旗、美银、德银等）对 <b>沪深300 / 创业板指 / A股整体</b> 的公开观点，每条注明机构与发布日。· 「状态」列由脚本对比上一版报告自动判定：<span class="pill sp-new">新增</span> 为本期首次收录、<span class="pill sp-upd">更新</span> 为该机构原有观点被新报告替换、<span class="pill sp-old">沿用</span> 为表述与此前一致。· 「观点变化」列写的是与同机构此前观点的差异要点，只在该条有变动时出现；沿用条目统一显示"与前版一致"，不重复堆叠旧内容。· 整理自公开研究与媒体报道（最近更新：<span id="viewasof">—</span>），属<b>非一手来源、需核实原文</b>，口径与时效以各机构报告为准。</div>
   </details>
   <!-- 总结 -->
-  <div class="sec-title">总结 <span class="en">Takeaways</span></div>
   <details class="mob-fold" open>
-    <summary class="sum-hint" style="font-size:12px;color:var(--primary);padding:2px 0 8px;">▾ 收起 / 展开总结要点</summary>
+    <summary class="sec-title">总结 <span class="en">Takeaways</span></summary>
     <div class="card" id="sum-card" style="padding:20px 24px;"></div>
   </details>
 
@@ -454,6 +448,7 @@
         · <b>ETF 与期权</b>：ETF 份额取上交所 / 深交所官方披露；期权持仓与成交按各指数主要 ETF 期权的交易所日统计逐日汇总，样本区间 2022-10-10 起（科创50ETF 期权自 2023-06-05 挂牌）。沪市为交易所披露的双边持仓；<b>深市（159915）为深交所披露的对冲后单边持仓</b>，2026-09-08 及更早为双边口径，两者相差约 6%。<br>
         · <b>10年期国债收益率</b>：中债国债到期收益率（中央结算公司），数据日期 <span id="bonddate">—</span>（非一手来源汇总，建议以官网复核）。<br>
         · <b>历史分位</b>：基于 2015-01 至 <span id="f2">—</span> 日频 PE(TTM)/PB 序列计算（科创50 自 2020-07 起）；PCR 分位基于 2022-10-10（科创50 为 2023-06-05）以来的日频序列。<br>
+        · <b>估值带收盘价</b>：2015~2019 为一次性回填的历史序列（已冻结），其后东财增量、失败自动降级新浪。<br>
         · <b>机构观点</b>：只收录外资投行（高盛、摩根士丹利、摩根大通、瑞银、野村、花旗、美银、德银等）公开观点，覆盖沪深300 与 创业板指，整理自公开研究与媒体报道，属非一手来源，需核实原文。
         <div class="dis"><b>免责声明：</b>以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
         <div style="margin-top:10px;">· <b>项目源码</b>：<a href="https://github.com/ZetaUrsae/cn-index-valuation" target="_blank" rel="noopener" style="color:var(--primary);">https://github.com/ZetaUrsae/cn-index-valuation</a></div>
@@ -609,9 +604,6 @@ const NAMES=DATA.rows.map(r=>r.name);
       '<td><span class="pill '+r.stc+'">'+r.st+'</span></td>';
     tb.appendChild(tr);
   });
-  const defs=[['s1','低估(&lt;20%)'],['s2','偏低(20–40%)'],['s3','适中(40–60%)'],['s4','偏高(60–80%)'],['s5','高估(&gt;80%)']];
-  document.getElementById('lg-val').innerHTML='<span>估值状态：</span>'+defs.map(d=>
-    '<span class="lg"><span class="dot" style="background:'+DIMC[d[0]]+'"></span>'+d[1]+'</span>').join('');
   const MEDS=['沪深300','中证500','创业板指'];
   const mrow=DATA.rows.filter(r=>MEDS.includes(r.name));
   const med=mrow.filter(r=>r.close_med!=null).map(r=>r.name+' '+fmt(r.close_med,2)+' 点').join(' · ');
@@ -912,8 +904,7 @@ function renderCharts(){
     document.getElementById('band-note').innerHTML=fallback+
       '统计窗口：'+since+'（'+xs[0]+' 起，'+n+' 周）。通道 = 窗口内 '+lbl+' 的均值 ±1σ/±2σ × 当期 '+
       (met==='pe'?'EPS(TTM)（＝收盘价/PE，随盈利披露逐周变化）':'BPS（＝收盘价/PB）')+
-      '，故通道随时间倾斜；收盘价上穿 +2σ 线即处于统计高位、下破 −2σ 线为统计低位。'+
-      '收盘价来源：2015~2019 为一次性回填的历史序列（已冻结），其后东财增量（失败自动降级新浪）。';
+      '，故通道随时间倾斜；收盘价上穿 +2σ 线即处于统计高位、下破 −2σ 线为统计低位。';
   }
   /* 滞后标记：收盘价最后一日早于报告 asof 时，明确标出"数据截至"，绝不冒充当日值 */
   function bandLag(d, xs){

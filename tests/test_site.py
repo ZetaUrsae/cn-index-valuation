@@ -37,7 +37,7 @@ def test_template_has_mobile_patch_markers():
                  "header .idxlist{display:none;}", ".sec-title .en{display:none;}",
                  "#tb-fut td.fut-name", "#t-fut td:first-child:not(.fut-name)",
                  "#t-matrix.mob-cards tr{display:grid",
-                 "details.mob-fold>summary:not(.sum-hint)::after"):
+                 "details.mob-fold>summary::after"):
         assert rule in css, rule
 
     # 护栏：标记块内的每一条 CSS 规则都必须落在 @media 里，防止 PC 端被误伤。
@@ -70,10 +70,23 @@ def test_template_has_mobile_patch_markers():
     assert tpl.count('<details class="mob-fold" open>') == 4
     # 矩阵卡片短标签（去掉表头括号注释）
     assert "s.replace(/（[^）]*）/g, '')" in js
-    # 估值状态说明：点明指标与窗口即可，分档沿用图例、不重复
-    assert "估值状态</b>按 <b>PE(TTM) 近10年分位</b>判定（分档见下方图例）" in tpl
+    # v2.9.3：图例色点删除，分档文字并入 note（纯文字、只出现一次）
+    assert 'id="lg-val"' not in tpl
+    assert "document.getElementById('lg-val')" not in tpl
+    assert "估值状态</b>按 <b>PE(TTM) 近10年分位</b>判定：" in tpl
     _vnote = tpl.split('· <b>估值状态</b>', 1)[1].split('</div>', 1)[0]
-    assert "20%" not in _vnote and "高估" not in _vnote
+    for level in ("低估(&lt;20%)", "偏低(20–40%)", "适中(40–60%)", "偏高(60–80%)", "高估(&gt;80%)"):
+        assert _vnote.count(level) == 1, level
+    assert "分档见下方图例" not in tpl
+    # 估值走势小字：来源移到 footer 折叠区，图下不再重复
+    assert "估值带收盘价</b>：2015~2019 为一次性回填的历史序列" in tpl
+    assert "收盘价来源：2015~2019" not in tpl
+    # 情绪面 hint 精简、机构展望 hint 移除（非一手来源已在 footer）
+    assert "情绪越偏乐观</span>" in tpl and "看跌保护需求越弱" not in tpl
+    assert "外资投行观点（按机构）</summary>" in tpl
+    # 总结改用 sec-title 作 summary，sum-hint 已移除
+    assert '<summary class="sec-title">总结' in tpl
+    assert "sum-hint" not in tpl
     # 措辞：偏低估已改偏低（模板图例 + gen2 状态函数）
     assert "偏低估" not in tpl
     gen2 = _read("scripts/gen2.py")
