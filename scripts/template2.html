@@ -186,6 +186,39 @@
     .tblwrap::after{content:"← 左右滑动查看完整表格 →";display:block;position:sticky;left:0;
       padding:6px 2px 0;font-size:10.5px;color:#8b98a8;text-align:center;}
   }
+
+  @media(max-width:640px){
+    /* v2.8.0：KPI 一行一个，两条分位条并排 */
+    .kpi{grid-template-columns:1fr;gap:6px;}
+    .kpi .k{display:grid;grid-template-columns:1fr 1fr;column-gap:10px;padding:9px 11px;}
+    .kpi .k .ktop{grid-column:1/-1;margin-bottom:5px;}
+    .kpi .k .krow{margin-top:0;}
+    .kpi .k .kk{width:auto;min-width:42px;}
+    /* 头部只留标题 + 日期；章节标题去英文 */
+    header .idxlist{display:none;}
+    .sec-title .en{display:none;}
+    .summary .lead p{font-size:12.5px;line-height:1.75;}
+    .legend{display:flex;flex-wrap:wrap;}
+    /* 长文字表卡片化（JS 给 table 加 mob-cards、给 td 加 data-lbl） */
+    .tblwrap table.mob-cards thead{display:none;}
+    .tblwrap table.mob-cards tbody{display:block;}
+    .tblwrap table.mob-cards tr{display:block;border:1px solid var(--line2);border-radius:8px;
+      margin-bottom:8px;padding:8px 10px;background:#fff;}
+    .tblwrap table.mob-cards td{display:block;text-align:left !important;border:0;
+      padding:3px 0;white-space:normal !important;font-size:12px;}
+    .tblwrap table.mob-cards td::before{content:attr(data-lbl);display:block;
+      font-size:10.5px;color:var(--faint);margin-bottom:1px;}
+    .tblwrap table.mob-cards td:first-child{position:static;box-shadow:none;background:transparent;}
+    .tblwrap table.mob-cards .clamp{display:-webkit-box;-webkit-line-clamp:3;
+      -webkit-box-orient:vertical;overflow:hidden;cursor:pointer;}
+    .tblwrap table.mob-cards .clamp.open{-webkit-line-clamp:unset;display:block;}
+    /* 长说明默认折叠，点按钮展开 */
+    .note.folded{max-height:2.9em;overflow:hidden;}
+    .fold-btn{display:block;margin:2px 0 8px;border:0;background:none;color:var(--primary);
+      font-size:11px;padding:2px 0;cursor:pointer;}
+    /* 技术面长描述列：换行、限宽，不再挤出屏幕 */
+    #tb-tech td:nth-child(9){white-space:normal;min-width:180px;max-width:220px;}
+  }
   @media(max-width:380px){
     /* 超窄屏：KPI 与表格再收一档，避免数字截断 */
     .kpi{gap:6px;}
@@ -194,8 +227,11 @@
     .kpi .k .kclose{font-size:10.5px;}
     table{font-size:11px;}
     thead th,tbody td{padding:6px 7px;}
+    /* 期货表首列收紧，给其余 7 列数字让位 */
+    #tb-fut td:first-child{max-width:88px;white-space:normal;font-size:10.5px;}
     .chart{height:240px !important;}
   }
+
   /* MOBILE_CSS_END */
 </style>
 </head>
@@ -426,6 +462,41 @@ if (MOBILE_CHART) {
   };
 }
 
+
+/* v2.8.0：长文字表卡片化 + 说明默认折叠（仅窄屏执行） */
+if (MOBILE_CHART) {
+  [['tb-view', [3, 4]], ['tb-matrix', [5]]].forEach(function(pair) {
+    var tb = document.getElementById(pair[0]);
+    if (!tb || !tb.closest) return;
+    var table = tb.closest('table');
+    if (!table) return;
+    table.classList.add('mob-cards');
+    var heads = Array.prototype.map.call(table.querySelectorAll('thead th'),
+      function(th) { return (th.textContent || '').trim(); });
+    Array.prototype.forEach.call(tb.querySelectorAll('tr'), function(tr) {
+      Array.prototype.forEach.call(tr.querySelectorAll('td'), function(td, i) {
+        td.setAttribute('data-lbl', heads[i] || '');
+        if (pair[1].indexOf(i) >= 0 && (td.textContent || '').length > 60) td.classList.add('clamp');
+      });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.clamp'), function(td) {
+    td.addEventListener('click', function() { td.classList.toggle('open'); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.note'), function(n) {
+    if ((n.textContent || '').length < 80) return;
+    n.classList.add('folded');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fold-btn';
+    btn.textContent = '展开说明';
+    btn.onclick = function() {
+      var folded = n.classList.toggle('folded');
+      btn.textContent = folded ? '展开说明' : '收起说明';
+    };
+    if (n.parentNode) n.parentNode.insertBefore(btn, n.nextSibling);
+  });
+}
 /* MOBILE_JS_END */
 
 const fmt=(v,n=2)=>(v===null||v===undefined||isNaN(v))?'—':Number(v).toFixed(n);

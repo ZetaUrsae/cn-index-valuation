@@ -171,6 +171,8 @@ TPL = """<!doctype html>
     .top .spacer{display:none;}
     .pick{flex:1;min-width:150px;}
     select#daypick{width:100%;}
+    /* 同步状态缩成圆点，给下拉让位 */
+    #syncTxt{display:none;}
   }
 </style>
 </head>
@@ -204,14 +206,18 @@ function setSync(ok, text) {
   document.getElementById('syncTxt').textContent = text;
 }
 
-function pick(i) {
+function pick(i, byUser) {
   if (!items.length) return;
   picked = i;
   var it = items[i];
   frame.src = it.f;
   open.href = it.f;
   daypick.value = String(i);
-  if (history.replaceState) history.replaceState(null, '', '#' + it.d);
+  // hash 只在用户主动切换时写：默认打开是干净网址，便于收藏（v2.8.0）；
+  // 选回"最新"则清掉 hash，恢复干净网址。深链定位（初始加载）不写。
+  if (byUser && history.replaceState) {
+    history.replaceState(null, '', i === 0 ? location.pathname + location.search : '#' + it.d);
+  }
 }
 
 function render() {
@@ -222,13 +228,13 @@ function render() {
     opt.textContent = it.d + (i === 0 ? '（最新）' : '');
     daypick.appendChild(opt);
   });
-  daypick.onchange = function () { pick(parseInt(daypick.value, 10)); };
+  daypick.onchange = function () { pick(parseInt(daypick.value, 10), true); };
   var start = 0;
   if (location.hash) {
     var h = location.hash.slice(1);
     for (var j = 0; j < items.length; j++) if (items[j].d === h) { start = j; break; }
   }
-  pick(start);
+  pick(start, false);
 }
 
 async function fromCloud() {
