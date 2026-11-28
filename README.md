@@ -1,3 +1,7 @@
+> **本分支 `actions` 是 GitHub Actions 每日自动生成的观察线快照**，不是权威版本。
+> 代码与 `main` 同步；`data/` 与 `reports/*_gh.html` 由云端独立取数生成，**每次运行 force-push 整体覆盖，请勿在此提交修改**。
+> 权威版本见 `main`；直接看报告：[index.html](index.html)｜历史各期见 `reports/`。
+
 # Index Valuation Daily — A股宽基指数估值与多维跟踪
 
 一个**每个交易日早上自动更新的 A 股宽基指数估值日报**。它不是行情播报，而是回答四个固定问题：
